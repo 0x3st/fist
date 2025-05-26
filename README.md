@@ -1,8 +1,19 @@
 # The FIST System
 
+A good API to check the content.
+
 ## Introdcution
 
 The F.I.S.T. stands for "fast, intuitive and sensitive test", which is the philosophy the community deal with the content supervision. The system is responsible for automatically and randomly check all the content within certain domain area.
+
+## Structure
+
+The system contains:
+- a webUI as admin panel.
+- a web scraper to scrape the content from the website.
+- a AI model to check the content.
+- a database to store the content and the result.
+- a API connector to change the database.
 
 ## Basic Logic
 
@@ -25,33 +36,14 @@ The system stretch a piece of each thread(provided) and use AI tools to determin
     - 20% if the content is longer than 3000 words.
 
 3. Send the content to the AI model with structured JSON format.
-    - Return True if the content is appropriate.
-    - Return False if the content is inappropriate.
+    - Return True if the content is appropriat as default.
+    - Return False if the content is inappropriate with the confidence bigger than 5.5.
     - Include confidence score and reasoning when available.
 
 4. Process the result:
     - If True, do nothing.
     - If False, trigger the visibility restriction and warning.
     - Log the decision for audit purposes.
-
-## AI prompt
-
-Input:
-```json
-{
-  "content": "text_to_check",
-  "tos": "relevant_tos_rules"
-}
-```
-
-Output:
-```json
-{
-  "appropriate": true|false,
-  "confidence": 0.0-1.0,
-  "reason": "brief_explanation"
-}
-```
 
 ## Actions
 
