@@ -27,7 +27,7 @@ class readyText:
             return content.strip()
         except FileNotFoundError:
             print(f"Warning: File '{self.url}' not found. Using placeholder content.")
-            return "File not found - using placeholder content for testing."
+            return "File not found."
         except Exception as e:
             print(f"Error reading file '{self.url}': {e}")
-            return "Error reading file - using placeholder content for testing."
+            return "Error reading file."

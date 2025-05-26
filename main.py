@@ -3,10 +3,16 @@ This is the main file for the FIST system.
 
 The system contains:
 - a web scraper(web-scraper) to scrape the content from the website.
-- a AI model(ai-connecter) to check the content.
+- a AI model(ai-connecter) to assess content inappropriateness probability.
 - a database to store the content and the result.
 - a API connector to change the database.
 - a webserver for admin page.
+
+Architecture:
+- AI component returns only probability scores (0-100%) with brief reasons
+- analyze_result() function handles final decision-making logic based on configurable thresholds
+- Clear separation between AI assessment and business logic decisions
+- Simplified risk levels: LOW (≤20%) → APPROVED, MEDIUM (21-80%) → MANUAL_REVIEW, VERY_HIGH (>80%) → REJECTED
 '''
 # import modules
 import random
@@ -17,9 +23,9 @@ from ai_connector import AIConnector
 # global variables
 g_percentages = [0.8,0.6,0.4,0.2]
 g_thresholds = [500, 1000, 3000]
-g_confidence_threshold = 7.0  # Minimum confidence level to trust AI decision
+g_probability_thresholds = {"low": 20, "high": 80}  # Thresholds for decision making
 
-g_file_url = "test_content_3_appropriate_long.txt"
+g_file_url = "test.txt"
 g_text = readyText(g_file_url)
 
 g_api_key = "sk-488d88049a9440a591bb948fa8fea5ca"
@@ -111,99 +117,66 @@ def ai_checker(text: str) -> Dict[str, Any]:
     global g_ai_connector
     return g_ai_connector.moderate_content(text)
 
-def result_judge(ai_result: Dict[str, Any], confidence_threshold: float = 7.0) -> Dict[str, Any]:
+def analyze_result(ai_result: Dict[str, Any], probability_thresholds: Optional[Dict[str, int]] = None) -> Dict[str, str]:
     '''
-    Judge the final result based on AI moderation output.
+    Analyze the AI moderation result and make the final decision based on probability thresholds.
 
     Args:
         ai_result(dict): The result from AI moderation containing:
-            - "appropriate": boolean indicating if content is appropriate
-            - "confidence": number (1-10) indicating confidence level
-            - "reason": brief explanation (only if inappropriate)
-        confidence_threshold(float): Minimum confidence level to trust the result (default: 7.0)
+            - "inappropriate_probability": number (0-100) indicating probability content is inappropriate
+            - "reason": brief explanation of assessment
+        probability_thresholds(dict): Thresholds for decision making. Defaults to:
+            {"low": 50, "mid": 70}
 
     Returns:
-        dict: Final judgment containing:
-            - "final_decision": string ("APPROVED", "REJECTED", "MANUAL_REVIEW")
-            - "ai_appropriate": boolean from AI
-            - "ai_confidence": number from AI
-            - "reason": explanation for the decision
-            - "requires_manual_review": boolean
+        dict: Final decision containing:
+            - "final_decision": string ("A", "R", "M") for Approved, Rejected, Manual check
+            - "reason": explanation for the final decision
     '''
-    appropriate = ai_result.get("appropriate", False)
-    confidence = ai_result.get("confidence", 0)
-    ai_reason = ai_result.get("reason", "")
+    # Default probability thresholds
+    if probability_thresholds is None:
+        probability_thresholds = {"low": 50, "mid": 70}
 
-    # High confidence decisions
-    if confidence >= confidence_threshold:
-        if appropriate:
-            return {
-                "final_decision": "APPROVED",
-                "ai_appropriate": appropriate,
-                "ai_confidence": confidence,
-                "reason": f"AI approved with high confidence ({confidence}/10)",
-                "requires_manual_review": False
-            }
-        else:
-            return {
-                "final_decision": "REJECTED",
-                "ai_appropriate": appropriate,
-                "ai_confidence": confidence,
-                "reason": f"AI rejected with high confidence ({confidence}/10): {ai_reason}",
-                "requires_manual_review": False
-            }
+    inappropriate_prob = ai_result.get("inappropriate_probability", 50)  # Default to uncertain
+    ai_reason = ai_result.get("reason", "No reason provided")
 
-    # Low confidence decisions - require manual review
+    # Determine decision based on probability
+    if inappropriate_prob <= probability_thresholds["low"]:
+        final_decision = "A"
+        reason = f"Low risk ({inappropriate_prob}%): {ai_reason}"
+    elif inappropriate_prob <= probability_thresholds["mid"]:
+        final_decision = "M"
+        reason = f"Medium risk ({inappropriate_prob}%): {ai_reason}"
     else:
-        decision_text = "approved" if appropriate else "rejected"
-        return {
-            "final_decision": "MANUAL_REVIEW",
-            "ai_appropriate": appropriate,
-            "ai_confidence": confidence,
-            "reason": f"AI {decision_text} but with low confidence ({confidence}/10). Manual review required. {ai_reason}",
-            "requires_manual_review": True
-        }
+        final_decision = "R"
+        reason = f"High risk ({inappropriate_prob}%): {ai_reason}"
 
-def main() -> bool:
+    return {
+        "final_decision": final_decision,
+        "reason": reason
+    }
+
+def main() -> Dict[str, str]:
     '''
     The main function for the FIST system.
 
     Returns:
-        bool: True if content is approved, False if rejected or requires manual review
+        dict: Analysis results in format {final_decision, reason}
+              where final_decision is A/R/M for Approved/Rejected/Manual check
     '''
-    global g_text, g_percentages, g_thresholds, g_file_url, g_confidence_threshold
+    global g_text, g_percentages, g_thresholds, g_file_url, g_probability_thresholds
 
     # Pierce the content based on length
-    original_content = g_text.content
     pierced_content = piercer(g_text.content)
     g_text.content = pierced_content
 
     # Get AI moderation result
     ai_result = ai_checker(g_text.content)
 
-    # Judge the final result based on AI output
-    final_judgment = result_judge(ai_result, g_confidence_threshold)
+    # Analyze the result to make final decision
+    analysis = analyze_result(ai_result, g_probability_thresholds)
 
-    # Print results for debugging/logging
-    print("=== FIST Content Moderation Results ===")
-    print(f"Original content length: {len(original_content.split())} words")
-    print(f"Pierced content length: {len(pierced_content.split())} words")
-    print(f"AI Result: {ai_result}")
-    print(f"Final Judgment: {final_judgment}")
-    print("=" * 40)
-
-    # Return decision based on final judgment
-    decision = final_judgment.get("final_decision", "MANUAL_REVIEW")
-
-    if decision == "APPROVED":
-        print("✅ Content APPROVED")
-        return True
-    elif decision == "REJECTED":
-        print("❌ Content REJECTED")
-        return False
-    else:  # MANUAL_REVIEW
-        print("⚠️  Content requires MANUAL REVIEW")
-        return False
+    return analysis
 
 if __name__ == "__main__":
     main()

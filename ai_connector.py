@@ -19,24 +19,22 @@ class AIConnector:
         self.base_url = base_url
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         self.system_prompt = """
-        You are a content moderator. Analyze the provided text and determine if it's appropriate.
+        You are a content moderator. Analyze the provided text and return the probability that the content is inappropriate.
         Return ONLY a JSON object with these fields:
-        - "appropriate": boolean (true/false)
-        - "confidence": number (1-10)
-        - "reason": brief explanation (only if inappropriate)
+        - "inappropriate_probability": number (0-100) - percentage probability that content is inappropriate
+        - "reason": brief explanation of your assessment
 
-        Example output:
+        Example outputs:
         {
-            "appropriate": true,
-            "confidence": 9.2
+            "inappropriate_probability": 5,
+            "reason": "Content appears appropriate with minor concerns about language tone"
         }
 
         OR
 
         {
-            "appropriate": false,
-            "confidence": 7.8,
-            "reason": "Contains explicit violent content"
+            "inappropriate_probability": 85,
+            "reason": "Contains explicit violent content and hate speech"
         }
         """
         self.model = "deepseek-chat"
@@ -50,9 +48,8 @@ class AIConnector:
 
         Returns:
             dict: A dictionary containing moderation results with keys:
-                - "appropriate": boolean indicating if content is appropriate
-                - "confidence": number (1-10) indicating confidence level
-                - "reason": brief explanation (only if inappropriate)
+                - "inappropriate_probability": number (0-100) indicating probability content is inappropriate
+                - "reason": brief explanation of assessment
         '''
         user_prompt = content
 
@@ -75,14 +72,12 @@ class AIConnector:
                 return json.loads(response_content)
             else:
                 return {
-                    "appropriate": False,
-                    "confidence": 1,
+                    "inappropriate_probability": 100,
                     "reason": "Empty response from AI model"
                 }
         except Exception as e:
             return {
-                "appropriate": False,
-                "confidence": 1,
+                "inappropriate_probability": 100,
                 "reason": f"Error processing content: {str(e)}"
             }
 
