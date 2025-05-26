@@ -1,72 +1,177 @@
-# The FIST System
+# FIST Content Moderation System
 
-A good API to check the content.
+A production-ready FastAPI-based content moderation system that uses AI to assess content appropriateness with intelligent content piercing.
 
-## Introdcution
+## Introduction
 
-The F.I.S.T. stands for "fast, intuitive and sensitive test", which is the philosophy the community deal with the content supervision. The system is responsible for automatically and randomly check all the content within certain domain area.
+The F.I.S.T. stands for "Fast, Intuitive and Sensitive Test" - a philosophy for efficient content supervision. The system automatically analyzes content using AI to determine appropriateness.
 
-## Structure
+## Features
 
-The system contains:
-- a webUI as admin panel.
-- a web scraper to scrape the content from the website.
-- a AI model to check the content.
-- a database to store the content and the result.
-- a API connector to change the database.
+- **AI-Powered Moderation**: Uses DeepSeek AI for content analysis
+- **Intelligent Content Piercing**: Automatically selects content portions based on length to optimize AI token usage
+- **Decision Engine**: Returns Approved (A), Rejected (R), or Manual Review (M) decisions
+- **SQLite Database**: Stores all moderation results with complete audit trail
+- **REST API**: Clean, documented endpoints with automatic OpenAPI documentation
+- **Admin Web Interface**: Bootstrap-based admin panel with authentication
+- **Configuration Management**: Real-time configuration updates through web UI
+- **Production Ready**: Error handling, validation, and proper HTTP status codes
 
-## Basic Logic
+## Quick Start
 
-The system stretch a piece of each thread(provided) and use AI tools to determine whether it uses suitable language to express the idea.
+### 1. Install Dependencies
+```bash
+uv sync
+```
 
-- To minimize the AI token usage, the input will be in structured JSON format, so does the return.
+### 2. Start the API Server
+```bash
+python app.py
+```
 
-- To maximize the productivity and protect the privacy of content creators, only input the pieced content.
+### 3. Access the System
+- **Admin Interface**: http://localhost:8000/admin (admin / admin123)
+- **API Documentation**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
 
-- To reduce the bandwith usage of the website, it will check each content only when it's changed once.
+## API Endpoints
 
-## Procedure
+### Core Endpoints
 
-1. Scrape the content from the website.
+#### `POST /moderate`
+Submit content for moderation.
 
-2. Randomly select a percentage of the content:
-    - 80% if the content is shorter than 500 words.
-    - 60% if the content is 500-1000 words.
-    - 40% if the content is 1000-3000 words.
-    - 20% if the content is longer than 3000 words.
+**Request:**
+```json
+{
+  "content": "Your content to moderate"
+}
+```
 
-3. Send the content to the AI model with structured JSON format.
-    - Return True if the content is appropriat as default.
-    - Return False if the content is inappropriate with the confidence bigger than 5.5.
-    - Include confidence score and reasoning when available.
+**Response:**
+```json
+{
+  "moderation_id": "uuid-string",
+  "status": "completed",
+  "result": {
+    "final_decision": "A",
+    "reason": "Low risk (15%): Content appears appropriate...",
+    "ai_result": {
+      "inappropriate_probability": 15,
+      "reason": "Content appears appropriate..."
+    }
+  }
+}
+```
 
-4. Process the result:
-    - If True, do nothing.
-    - If False, trigger the visibility restriction and warning.
-    - Log the decision for audit purposes.
+#### Other Endpoints
+- `GET /results/{moderation_id}` - Get moderation result by ID
+- `GET /health` - Health check endpoint
+- `GET /admin/stats` - Get moderation statistics
+- `GET /admin/records` - Get all moderation records
 
-## Actions
+## Admin Interface
 
-1. Restrict visibility of inappropriate content.
-2. Send detailed warning to the content creator and admin.
-3. Provide appeal mechanism for content creators.
-4. Track false positive/negative rates to improve system accuracy.
-5. Manually review flagged content within 48 hours.
+The system includes a comprehensive web-based admin interface with the following features:
 
-## FIST Term of Service
+### Authentication
+- **Login URL**: http://localhost:8000/admin
+- **Default Credentials**: admin / admin123
+- **Session Management**: JWT-based authentication with secure cookies
 
-1. We will never send sensitive data to any other third-party without acquired permission. No exception so far.
+### Dashboard
+- **System Statistics**: Total moderations, approval rates, rejection rates
+- **Performance Metrics**: Average inappropriateness probability
+- **Recent Records**: Latest moderation results with quick overview
 
+### Configuration Management
+- **Content Piercing Settings**: Adjust percentages and word count thresholds
+- **Decision Thresholds**: Configure low/high probability thresholds for automated decisions
+- **AI Model Selection**: Choose between different AI models
+- **Real-time Updates**: Configuration changes take effect immediately
+
+### Records Management
+- **Complete Audit Trail**: View all moderation records with full details
+- **Search and Filter**: Find specific records quickly
+- **Detailed View**: Click any record to see complete information
+- **Export Capability**: Access to all moderation data
+
+### Security Features
+- **Authentication Required**: All admin functions require login
+- **Session Timeout**: Automatic logout after inactivity
+- **Input Validation**: All configuration changes are validated
+- **Error Handling**: Comprehensive error messages and recovery
+
+## Configuration
+
+Configure via environment variables:
+
+```bash
+# AI Configuration
+export AI_API_KEY="your-deepseek-api-key"
+export AI_BASE_URL="https://api.deepseek.com"
+export AI_MODEL="deepseek-chat"
+
+# API Configuration
+export API_HOST="0.0.0.0"
+export API_PORT="8000"
+export DEBUG="false"
+
+# Admin Authentication
+export ADMIN_USERNAME="admin"
+export ADMIN_PASSWORD="your-secure-password"
+export SECRET_KEY="your-secret-key"
+```
+
+## Content Processing Logic
+
+### 1. Content Piercing
+Based on word count, different percentages of content are analyzed:
+- **< 500 words**: 80% of content
+- **500-1000 words**: 60% of content
+- **1000-3000 words**: 40% of content
+- **> 3000 words**: 20% of content
+
+### 2. AI Analysis
+The selected content portion is sent to the AI model for analysis.
+
+### 3. Decision Making
+Based on probability thresholds:
+- **≤ 20%**: Approved (A)
+- **21-80%**: Manual Review (M)
+- **> 80%**: Rejected (R)
+
+## Production Deployment
+
+### Using Uvicorn
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### Using Gunicorn
+```bash
+pip install gunicorn
+gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+```
+
+## File Structure
+
+```
+├── app.py              # Main FastAPI application (all-in-one)
+├── ai_connector.py     # AI model integration
+├── text_class.py       # Text processing utilities
+├── main.py             # Legacy CLI interface
+├── pyproject.toml      # Dependencies
+└── README.md           # This file
+```
+
+## FIST Terms of Service
+
+1. We will never send sensitive data to any third-party without acquired permission.
 2. Only content will come into the system for AI checking. No user information will be involved.
-
-3. The system will only be used for content supervision. No other purpose will be allowed.
-
+3. The system will only be used for content supervision.
 4. The content supervision follows the TOS of the website/provided by website admin.
-
-5. We only support the region(server physical address or legislation) where FIST is safe to use.
-
+5. We only support regions where FIST is safe to use.
 6. Users have the right to appeal any content flagged as inappropriate by the system.
-
-7. We maintain logs of all content checks for a limited period(30d currently, will be determined) for audit purposes only.
-
-8. The system may be updated periodically to improve accuracy and compliance with regulations.
+7. We maintain logs of all content checks for audit purposes only.
+8. The system may be updated periodically to improve accuracy and compliance.

@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}FIST Admin - Configuration{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-gear"></i> Configuration</h1>
+</div>
+
+{% if success %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> {{ success }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<form method="post" action="/admin/config">
+    <div class="row">
+        <!-- Content Piercing Configuration -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Content Piercing Settings</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="percentages" class="form-label">Percentages</label>
+                        <input type="text" class="form-control" id="percentages" name="percentages" 
+                               value="{{ config.percentages|join(', ') }}" required>
+                        <div class="form-text">
+                            Comma-separated percentages (0-1) for different content lengths.
+                            Example: 0.8, 0.6, 0.4, 0.2
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="thresholds" class="form-label">Word Count Thresholds</label>
+                        <input type="text" class="form-control" id="thresholds" name="thresholds" 
+                               value="{{ config.thresholds|join(', ') }}" required>
+                        <div class="form-text">
+                            Comma-separated word count thresholds.
+                            Example: 500, 1000, 3000
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>How it works:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>&lt; 500 words: {{ "%.0f"|format(config.percentages[0] * 100) }}% of content</li>
+                            <li>500-1000 words: {{ "%.0f"|format(config.percentages[1] * 100) }}% of content</li>
+                            <li>1000-3000 words: {{ "%.0f"|format(config.percentages[2] * 100) }}% of content</li>
+                            <li>&gt; 3000 words: {{ "%.0f"|format(config.percentages[3] * 100) }}% of content</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decision Thresholds -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Decision Thresholds</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="low_threshold" class="form-label">Low Threshold (%)</label>
+                        <input type="number" class="form-control" id="low_threshold" name="low_threshold" 
+                               value="{{ config.probability_thresholds.low }}" min="0" max="100" required>
+                        <div class="form-text">
+                            Content with probability ≤ this value will be <strong class="text-success">approved</strong>.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="high_threshold" class="form-label">High Threshold (%)</label>
+                        <input type="number" class="form-control" id="high_threshold" name="high_threshold" 
+                               value="{{ config.probability_thresholds.high }}" min="0" max="100" required>
+                        <div class="form-text">
+                            Content with probability &gt; this value will be <strong class="text-danger">rejected</strong>.
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <strong>Decision Logic:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>≤ {{ config.probability_thresholds.low }}%: <span class="badge bg-success">Approved</span></li>
+                            <li>{{ config.probability_thresholds.low + 1 }}% - {{ config.probability_thresholds.high }}%: <span class="badge bg-warning">Manual Review</span></li>
+                            <li>&gt; {{ config.probability_thresholds.high }}%: <span class="badge bg-danger">Rejected</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Model Configuration -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">AI Model Settings</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="ai_model" class="form-label">AI Model</label>
+                        <select class="form-select" id="ai_model" name="ai_model" required>
+                            <option value="deepseek-chat" {% if config.ai_model == 'deepseek-chat' %}selected{% endif %}>
+                                DeepSeek Chat
+                            </option>
+                            <option value="deepseek-coder" {% if config.ai_model == 'deepseek-coder' %}selected{% endif %}>
+                                DeepSeek Coder
+                            </option>
+                        </select>
+                        <div class="form-text">
+                            Select the AI model to use for content moderation.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="row">
+        <div class="col-12">
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button type="button" class="btn btn-secondary me-md-2" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Save Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Validate form before submission
+document.querySelector('form').addEventListener('submit', function(e) {
+    const percentages = document.getElementById('percentages').value;
+    const thresholds = document.getElementById('thresholds').value;
+    const lowThreshold = parseInt(document.getElementById('low_threshold').value);
+    const highThreshold = parseInt(document.getElementById('high_threshold').value);
+    
+    // Validate percentage format
+    const percentageArray = percentages.split(',').map(p => parseFloat(p.trim()));
+    if (percentageArray.some(p => isNaN(p) || p < 0 || p > 1)) {
+        e.preventDefault();
+        alert('Percentages must be numbers between 0 and 1');
+        return;
+    }
+    
+    // Validate threshold format
+    const thresholdArray = thresholds.split(',').map(t => parseInt(t.trim()));
+    if (thresholdArray.some(t => isNaN(t) || t <= 0)) {
+        e.preventDefault();
+        alert('Thresholds must be positive integers');
+        return;
+    }
+    
+    // Validate probability thresholds
+    if (lowThreshold >= highThreshold) {
+        e.preventDefault();
+        alert('Low threshold must be less than high threshold');
+        return;
+    }
+});
+</script>
+{% endblock %}
