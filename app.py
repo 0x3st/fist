@@ -20,12 +20,11 @@ import os
 import random
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, cast
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Form, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, Text, Boolean
+from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel, Field
@@ -66,7 +65,7 @@ def get_password_hash(password: str) -> str:
     """Hash a password."""
     return pwd_context.hash(password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
     if expires_delta:
@@ -81,7 +80,7 @@ def verify_token(token: str) -> Optional[str]:
     """Verify a JWT token and return the username."""
     try:
         payload = jwt.decode(token, Config.SECRET_KEY, algorithms=[Config.ALGORITHM])
-        username: str = payload.get("sub")
+        username: Optional[str] = payload.get("sub")
         if username is None:
             return None
         return username
@@ -306,7 +305,7 @@ class DatabaseOperations:
         return db.query(ModerationRecord).order_by(ModerationRecord.created_at.desc()).limit(limit).all()
 
     @staticmethod
-    def get_stats(db: Session) -> dict:
+    def get_stats(db: Session) -> Dict[str, Any]:
         """Get moderation statistics."""
         total = db.query(ModerationRecord).count()
         approved = db.query(ModerationRecord).filter(ModerationRecord.final_decision == "A").count()
@@ -366,7 +365,7 @@ async def startup_event():
     create_tables()
 
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
