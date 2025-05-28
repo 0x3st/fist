@@ -20,7 +20,8 @@ import os
 import random
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any, cast
+from typing import List, Optional, Dict, Any
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Form, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -151,7 +152,7 @@ class ModerationRecord(Base):
     original_content = Column(Text, nullable=False)
     pierced_content = Column(Text, nullable=False)
     word_count = Column(Integer, nullable=False)
-    percentage_used = Column(Float, nullable=False)
+    percentage_used = Column(Float, nullable=False)  # type: ignore
     inappropriate_probability = Column(Integer, nullable=False)
     ai_reason = Column(Text, nullable=False)
     final_decision = Column(String(1), nullable=False)  # A, R, M
@@ -323,13 +324,23 @@ class DatabaseOperations:
             "average_probability": round(avg_probability, 2)
         }
 
+# Lifespan event handler
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Lifespan event handler for startup and shutdown."""
+    # Startup
+    create_tables()
+    yield
+    # Shutdown (if needed)
+
 # Create FastAPI app
 app = FastAPI(
     title="FIST Content Moderation API",
     description="Fast, Intuitive and Sensitive Test - Content Moderation System",
     version="0.1.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Setup templates
@@ -358,14 +369,8 @@ def require_auth(token: str = Cookie(None)):
         )
     return user
 
-# Create database tables on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on startup."""
-    create_tables()
-
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
+async def global_exception_handler(_request: Request, exc: Exception):
     """Global exception handler."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -423,7 +428,7 @@ async def moderate_content(
 
         # Prepare response
         moderation_result = ModerationResult(
-            moderation_id=record.id,
+            moderation_id=record.id,  # type: ignore
             original_content=result["original_content"],
             pierced_content=result["pierced_content"],
             ai_result=AIResult(
@@ -432,13 +437,13 @@ async def moderate_content(
             ),
             final_decision=result["final_decision"],
             reason=result["reason"],
-            created_at=record.created_at,
+            created_at=record.created_at,  # type: ignore
             word_count=result["word_count"],
             percentage_used=result["percentage_used"]
         )
 
         return ModerationResponse(
-            moderation_id=record.id,
+            moderation_id=record.id,  # type: ignore
             status="completed",
             result=moderation_result
         )
@@ -464,18 +469,18 @@ async def get_moderation_result(
         )
 
     return ModerationResult(
-        moderation_id=record.id,
-        original_content=record.original_content,
-        pierced_content=record.pierced_content,
+        moderation_id=record.id,  # type: ignore
+        original_content=record.original_content,  # type: ignore
+        pierced_content=record.pierced_content,  # type: ignore
         ai_result=AIResult(
-            inappropriate_probability=record.inappropriate_probability,
-            reason=record.ai_reason
+            inappropriate_probability=record.inappropriate_probability,  # type: ignore
+            reason=record.ai_reason  # type: ignore
         ),
-        final_decision=record.final_decision,
-        reason=record.final_reason,
-        created_at=record.created_at,
-        word_count=record.word_count,
-        percentage_used=record.percentage_used
+        final_decision=record.final_decision,  # type: ignore
+        reason=record.final_reason,  # type: ignore
+        created_at=record.created_at,  # type: ignore
+        word_count=record.word_count,  # type: ignore
+        percentage_used=record.percentage_used  # type: ignore
     )
 
 @app.get("/admin/stats", response_model=StatsResponse)
@@ -494,18 +499,18 @@ async def get_all_records(
 
     return [
         ModerationResult(
-            moderation_id=record.id,
-            original_content=record.original_content,
-            pierced_content=record.pierced_content,
+            moderation_id=record.id,  # type: ignore
+            original_content=record.original_content,  # type: ignore
+            pierced_content=record.pierced_content,  # type: ignore
             ai_result=AIResult(
-                inappropriate_probability=record.inappropriate_probability,
-                reason=record.ai_reason
+                inappropriate_probability=record.inappropriate_probability,  # type: ignore
+                reason=record.ai_reason  # type: ignore
             ),
-            final_decision=record.final_decision,
-            reason=record.final_reason,
-            created_at=record.created_at,
-            word_count=record.word_count,
-            percentage_used=record.percentage_used
+            final_decision=record.final_decision,  # type: ignore
+            reason=record.final_reason,  # type: ignore
+            created_at=record.created_at,  # type: ignore
+            word_count=record.word_count,  # type: ignore
+            percentage_used=record.percentage_used  # type: ignore
         )
         for record in records
     ]
@@ -565,10 +570,10 @@ async def admin_dashboard(request: Request, user: str = Depends(require_auth), d
     })
 
 @app.get("/admin/config", response_class=HTMLResponse)
-async def admin_config_page(request: Request, user: str = Depends(require_auth), db: Session = Depends(get_db)):
+async def admin_config_page(request: Request, user: str = Depends(require_auth), _db: Session = Depends(get_db)):
     """Admin configuration page."""
     # Get current configuration
-    current_config = {
+    current_config: Dict[str, Any] = {
         "percentages": Config.DEFAULT_PERCENTAGES,
         "thresholds": Config.DEFAULT_THRESHOLDS,
         "probability_thresholds": Config.DEFAULT_PROBABILITY_THRESHOLDS,
@@ -619,9 +624,9 @@ async def admin_update_config(
         for key, value in config_updates:
             existing = db.query(ConfigRecord).filter(ConfigRecord.config_key == key).first()
             if existing:
-                existing.config_value = value
-                existing.updated_by = user
-                existing.updated_at = datetime.now()
+                existing.config_value = value  # type: ignore
+                existing.updated_by = user  # type: ignore
+                existing.updated_at = datetime.now()  # type: ignore
             else:
                 new_config = ConfigRecord(
                     config_key=key,
