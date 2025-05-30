@@ -1,20 +1,22 @@
 """
-FIST Content Moderation System - Production API
+FIST Content Moderation System - Pure API Service
 
 This is the main application file for the FIST system providing a FastAPI-based content moderation service.
 
-The system contains:
-- FastAPI web server with REST endpoints
+The system provides:
+- Pure REST API endpoints for content moderation
 - AI model integration for content assessment
 - SQLite database for storing moderation results
 - Intelligent content piercing based on length
 - Configurable decision thresholds
+- User and token management via API
 
 Architecture:
 - AI component returns only probability scores (0-100%) with brief reasons
 - analyze_result() function handles final decision-making logic based on configurable thresholds
 - Clear separation between AI assessment and business logic decisions
 - Simplified risk levels: LOW (≤20%) → APPROVED, MEDIUM (21-80%) → MANUAL_REVIEW, HIGH (>80%) → REJECTED
+- No web UI - pure API service for frontend integration
 """
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -25,9 +27,7 @@ from config import Config
 from models import ErrorResponse
 from database import create_tables, load_config_from_database
 from api_routes import router as api_router
-from admin_routes import router as admin_router
 from user_routes import router as user_router
-from user_web_routes import router as user_web_router
 
 # Lifespan event handler
 @asynccontextmanager
@@ -67,9 +67,7 @@ async def global_exception_handler(_request: Request, exc: Exception):
 
 # Include routers
 app.include_router(api_router)
-app.include_router(admin_router)
 app.include_router(user_router)
-app.include_router(user_web_router)
 
 if __name__ == "__main__":
     import uvicorn

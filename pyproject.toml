@@ -9,9 +9,7 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "sqlalchemy",
-    "python-multipart",
     "requests",
-    "jinja2",
     "python-jose[cryptography]",
     "passlib[bcrypt]",
     "bcrypt==4.0.1",  # Pin bcrypt to 4.0.1 for compatibility with passlib 1.7.4

@@ -3,7 +3,9 @@ Database operations and setup for FIST Content Moderation System.
 
 This module handles all database-related functionality including
 session management, table creation, and CRUD operations.
+Privacy-focused: uses hash storage for sensitive data.
 """
+import hashlib
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy import create_engine
@@ -87,26 +89,21 @@ class DatabaseOperations:
     def create_moderation_record(
         db: Session,
         original_content: str,
-        pierced_content: str,
         word_count: int,
         percentage_used: float,
         inappropriate_probability: int,
-        ai_reason: str,
-        final_decision: str,
-        final_reason: str,
-        user_id: Optional[str] = None
+        final_decision: str
     ) -> ModerationRecord:
-        """Create a new moderation record."""
+        """Create a new moderation record - privacy focused."""
+        # Create SHA-256 hash of content for verification
+        content_hash = hashlib.sha256(original_content.encode('utf-8')).hexdigest()
+
         record = ModerationRecord(
-            user_id=user_id,
-            original_content=original_content,
-            pierced_content=pierced_content,
+            content_hash=content_hash,
             word_count=word_count,
             percentage_used=percentage_used,
             inappropriate_probability=inappropriate_probability,
-            ai_reason=ai_reason,
-            final_decision=final_decision,
-            final_reason=final_reason
+            final_decision=final_decision
         )
         db.add(record)
         db.commit()
@@ -118,29 +115,7 @@ class DatabaseOperations:
         """Get a moderation record by ID."""
         return db.query(ModerationRecord).filter(ModerationRecord.id == moderation_id).first()
 
-    @staticmethod
-    def get_all_moderation_records(db: Session, limit: int = 100) -> List[ModerationRecord]:
-        """Get all moderation records with limit."""
-        return db.query(ModerationRecord).order_by(ModerationRecord.created_at.desc()).limit(limit).all()
-
-    @staticmethod
-    def get_stats(db: Session) -> Dict[str, Any]:
-        """Get moderation statistics."""
-        total = db.query(ModerationRecord).count()
-        approved = db.query(ModerationRecord).filter(ModerationRecord.final_decision == "A").count()
-        rejected = db.query(ModerationRecord).filter(ModerationRecord.final_decision == "R").count()
-        manual_review = db.query(ModerationRecord).filter(ModerationRecord.final_decision == "M").count()
-
-        avg_prob_result = db.query(ModerationRecord.inappropriate_probability).all()
-        avg_probability = sum(row[0] for row in avg_prob_result) / len(avg_prob_result) if avg_prob_result else 0.0
-
-        return {
-            "total_moderations": total,
-            "approved_count": approved,
-            "rejected_count": rejected,
-            "manual_review_count": manual_review,
-            "average_probability": round(avg_probability, 2)
-        }
+    # Statistics and records listing removed for privacy protection
 
     @staticmethod
     def get_config_value(db: Session, config_key: str) -> Optional[str]:
@@ -254,10 +229,11 @@ class DatabaseOperations:
 
     @staticmethod
     def update_token_last_used(db: Session, token_id: str) -> None:
-        """Update token last used timestamp."""
+        """Update token last used timestamp and increment usage count."""
         token = db.query(APIToken).filter(APIToken.token_id == token_id).first()
         if token:
             token.last_used = datetime.now()  # type: ignore
+            token.usage_count = (token.usage_count or 0) + 1  # type: ignore
             db.commit()
 
     @staticmethod
@@ -372,34 +348,13 @@ class DatabaseOperations:
             return True
         return False
 
-    # Usage Statistics
+    # Usage Statistics - privacy focused
     @staticmethod
     def get_user_usage_stats(db: Session, user_id: str) -> Dict[str, Any]:
-        """Get usage statistics for a user."""
-        from sqlalchemy import func, and_
+        """Get usage statistics for a user - privacy focused."""
+        from sqlalchemy import and_
 
-        # Total requests
-        total_requests = db.query(ModerationRecord).filter(ModerationRecord.user_id == user_id).count()
-
-        # Requests today
-        today = datetime.now().date()
-        requests_today = db.query(ModerationRecord).filter(
-            and_(
-                ModerationRecord.user_id == user_id,
-                func.date(ModerationRecord.created_at) == today
-            )
-        ).count()
-
-        # Requests this month
-        current_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        requests_this_month = db.query(ModerationRecord).filter(
-            and_(
-                ModerationRecord.user_id == user_id,
-                ModerationRecord.created_at >= current_month
-            )
-        ).count()
-
-        # Active tokens count
+        # Only show active tokens count - no historical data
         tokens_count = db.query(APIToken).filter(
             and_(
                 APIToken.user_id == user_id,
@@ -408,9 +363,6 @@ class DatabaseOperations:
         ).count()
 
         return {
-            "total_requests": total_requests,
-            "requests_today": requests_today,
-            "requests_this_month": requests_this_month,
             "tokens_count": tokens_count
         }
 
@@ -448,15 +400,4 @@ class DatabaseOperations:
         """Check if any admin exists in the database."""
         return db.query(Admin).filter(Admin.is_active == True).count() > 0
 
-    # User Moderation History Operations
-    @staticmethod
-    def get_user_moderation_records(db: Session, user_id: str, limit: int = 100, offset: int = 0) -> List[ModerationRecord]:
-        """Get moderation records for a specific user."""
-        return db.query(ModerationRecord).filter(
-            ModerationRecord.user_id == user_id
-        ).order_by(ModerationRecord.created_at.desc()).offset(offset).limit(limit).all()
-
-    @staticmethod
-    def get_user_moderation_count(db: Session, user_id: str) -> int:
-        """Get total count of moderation records for a user."""
-        return db.query(ModerationRecord).filter(ModerationRecord.user_id == user_id).count()
+    # User moderation history removed for privacy protection

@@ -169,6 +169,7 @@ async def create_token(
         token=token,  # Only shown on creation
         created_at=api_token.created_at,  # type: ignore
         last_used=api_token.last_used,  # type: ignore
+        usage_count=api_token.usage_count or 0,  # type: ignore
         is_active=api_token.is_active  # type: ignore
     )
 
@@ -189,6 +190,7 @@ async def list_tokens(
             token=None,  # Never show token value in list
             created_at=token.created_at,  # type: ignore
             last_used=token.last_used,  # type: ignore
+            usage_count=token.usage_count or 0,  # type: ignore
             is_active=token.is_active  # type: ignore
         )
         for token in tokens

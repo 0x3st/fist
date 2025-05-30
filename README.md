@@ -1,23 +1,22 @@
-# FIST Content Moderation System
+# FIST Content Moderation API
 
-A production-ready FastAPI-based content moderation system that uses AI to assess content appropriateness with intelligent content piercing.
+A production-ready FastAPI-based content moderation service that uses AI to assess content appropriateness with intelligent content piercing.
 
 ## Introduction
 
-The F.I.S.T. stands for "Fast, Intuitive and Sensitive Test" - a philosophy for efficient content supervision. The system automatically analyzes content using AI to determine appropriateness.
+The F.I.S.T. stands for "Fast, Intuitive and Sensitive Test" - a philosophy for efficient content supervision. This is a pure API service designed for frontend integration, providing comprehensive content moderation capabilities without any web UI.
 
 ## Features
 
+- **Pure REST API**: Clean, documented endpoints with automatic OpenAPI documentation
 - **AI-Powered Moderation**: Uses DeepSeek AI for content analysis
 - **Intelligent Content Piercing**: Automatically selects content portions based on length to optimize AI token usage
 - **Decision Engine**: Returns Approved (A), Rejected (R), or Manual Review (M) decisions
-- **User Authentication & Management**: Complete user registration, login, and API token management
+- **User Authentication & Management**: Complete user registration, login, and API token management via API
 - **Invitation Code System**: Control user registration with optional invitation codes
-- **Usage Tracking**: Monitor API usage per user and token with detailed statistics
-- **SQLite Database**: Stores all moderation results with complete audit trail
-- **REST API**: Clean, documented endpoints with automatic OpenAPI documentation
-- **Admin Web Interface**: Bootstrap-based admin panel with user management
-- **Configuration Management**: Real-time configuration updates through web UI
+- **Privacy-Focused Usage Tracking**: Monitor only token usage counts, no historical data
+- **Privacy-Focused Database**: Stores only content hashes and essential metadata
+- **Frontend-Ready**: Designed for integration with any frontend framework
 - **Production Ready**: Error handling, validation, and proper HTTP status codes
 
 ## Quick Start
@@ -32,10 +31,10 @@ uv sync
 python app.py
 ```
 
-### 3. Access the System
-- **Admin Interface**: http://localhost:8000/admin (admin / admin123)
+### 3. Access the API
 - **API Documentation**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
+- **Health Check**: http://localhost:8000/api/health
 
 ## API Endpoints
 
@@ -48,26 +47,26 @@ python app.py
 1. **Register a user:**
 ```bash
 # Without invitation code (if REQUIRE_INVITATION_CODE=False)
-curl -X POST http://localhost:8000/user/register \
+curl -X POST http://localhost:8000/api/user/register \
   -H "Content-Type: application/json" \
   -d '{"username": "myuser", "password": "mypassword123"}'
 
 # With invitation code (if REQUIRE_INVITATION_CODE=True)
-curl -X POST http://localhost:8000/user/register \
+curl -X POST http://localhost:8000/api/user/register \
   -H "Content-Type: application/json" \
   -d '{"username": "myuser", "password": "mypassword123", "invitation_code": "your_invitation_code"}'
 ```
 
 2. **Login to get access token:**
 ```bash
-curl -X POST http://localhost:8000/user/login \
+curl -X POST http://localhost:8000/api/user/login \
   -H "Content-Type: application/json" \
   -d '{"username": "myuser", "password": "mypassword123"}'
 ```
 
 3. **Create API token:**
 ```bash
-curl -X POST http://localhost:8000/user/tokens \
+curl -X POST http://localhost:8000/api/user/tokens \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -d '{"name": "My API Token"}'
@@ -75,7 +74,7 @@ curl -X POST http://localhost:8000/user/tokens \
 
 4. **Use API token for moderation:**
 ```bash
-curl -X POST http://localhost:8000/moderate \
+curl -X POST http://localhost:8000/api/moderate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -d '{"content": "Content to moderate"}'
@@ -83,52 +82,28 @@ curl -X POST http://localhost:8000/moderate \
 
 ## Invitation Code System
 
-When `REQUIRE_INVITATION_CODE=True`, users need invitation codes to register. Here's the complete workflow:
+When `REQUIRE_INVITATION_CODE=True`, users need invitation codes to register. Invitation codes must be created via direct database access or by implementing your own admin interface.
 
-### For Administrators
+### Registration with Invitation Code
 
-1. **Access Admin Interface:**
-   - Navigate to: http://localhost:8000/admin
-   - Login with admin credentials (default: `admin`/`admin123`)
+```bash
+curl -X POST http://localhost:8000/api/user/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newuser",
+    "password": "securepass123",
+    "invitation_code": "abc123def456ghi789"
+  }'
+```
 
-2. **Create Invitation Code:**
-   - Go to "Users" section in the admin interface
-   - Find the "Create Invitation Code" form
-   - Configure the invitation code:
-     - **Max Uses** (optional): Limit how many users can use this code
-     - **Expires in Days** (optional): Set when the code expires
-   - Click "Create Code"
+### Registration Validation
 
-3. **Manage Invitation Codes:**
-   - View all invitation codes in the "Invitation Codes" table
-   - See usage statistics (current uses vs. max uses)
-   - Deactivate codes when needed
-   - Monitor expiration dates
-
-### For Users
-
-1. **Get Invitation Code:**
-   - Obtain an invitation code from the system administrator
-   - Example code format: `abc123def456ghi789`
-
-2. **Register with Invitation Code:**
-   ```bash
-   curl -X POST http://localhost:8000/user/register \
-     -H "Content-Type: application/json" \
-     -d '{
-       "username": "newuser",
-       "password": "securepass123",
-       "invitation_code": "abc123def456ghi789"
-     }'
-   ```
-
-3. **Registration Validation:**
-   The system will validate:
-   - ✅ Code exists and is active
-   - ✅ Code hasn't expired
-   - ✅ Code hasn't reached maximum uses
-   - ✅ Username is available
-   - ✅ System hasn't reached user limit
+The system will validate:
+- ✅ Code exists and is active
+- ✅ Code hasn't expired
+- ✅ Code hasn't reached maximum uses
+- ✅ Username is available
+- ✅ System hasn't reached user limit
 
 ### Error Messages
 
@@ -155,7 +130,7 @@ export API_TOKEN_PREFIX="fist_"
 
 ### Core Endpoints
 
-#### `POST /moderate`
+#### `POST /api/moderate`
 Submit content for moderation. **Requires API token authentication.**
 
 **Headers:**
@@ -190,59 +165,45 @@ Content-Type: application/json
 }
 ```
 
+## Complete API Reference
+
+### Core Moderation Endpoints
+- `POST /api/moderate` - Submit content for moderation (requires API token)
+- `GET /api/results/{moderation_id}` - Get moderation result by ID
+- `GET /api/health` - Health check endpoint
+
 ### User Management Endpoints
-- `POST /user/register` - Register new user
-- `POST /user/login` - User login
-- `POST /user/tokens` - Create API token (requires user auth)
-- `GET /user/tokens` - List API tokens (requires user auth)
-- `DELETE /user/tokens/{token_id}` - Delete API token (requires user auth)
-- `GET /user/usage` - Get usage statistics (requires user auth)
+- `POST /api/user/register` - Register new user
+- `POST /api/user/login` - User login
+- `POST /api/user/tokens` - Create API token (requires user auth)
+- `GET /api/user/tokens` - List API tokens (requires user auth)
+- `DELETE /api/user/tokens/{token_id}` - Delete API token (requires user auth)
+- `GET /api/user/usage` - Get usage statistics (requires user auth)
 
-#### Other Endpoints
-- `GET /results/{moderation_id}` - Get moderation result by ID
-- `GET /health` - Health check endpoint
-- `GET /admin/stats` - Get moderation statistics (admin only)
-- `GET /admin/records` - Get all moderation records (admin only)
+### Privacy Protection
+- No admin statistics or records endpoints
+- Content stored as SHA-256 hash only
+- No historical data tracking
+- Token usage tracking only
 
-## Admin Interface
+## Frontend Integration
 
-The system includes a comprehensive web-based admin interface with the following features:
+This is a pure API service designed for integration with any frontend framework. You can build your own admin interface and user management UI using the provided API endpoints.
 
-### Authentication
-- **Login URL**: http://localhost:8000/admin
-- **Default Credentials**: admin / admin123
-- **Session Management**: JWT-based authentication with secure cookies
+### Building Your Own Frontend
 
-### Dashboard
-- **System Statistics**: Total moderations, approval rates, rejection rates
-- **Performance Metrics**: Average inappropriateness probability
-- **Recent Records**: Latest moderation results with quick overview
+The API provides all necessary endpoints for:
+- **User Management**: Registration, login, token management
+- **Content Moderation**: Submit content and retrieve results
+- **Admin Functions**: Statistics, records, user administration
+- **Configuration**: All settings can be managed via environment variables
 
-### Configuration Management
-- **Content Piercing Settings**: Adjust percentages and word count thresholds
-- **Decision Thresholds**: Configure low/high probability thresholds for automated decisions
-- **AI Model Selection**: Choose between different AI models
-- **Real-time Updates**: Configuration changes take effect immediately
+### Example Frontend Integrations
 
-### Records Management
-- **Complete Audit Trail**: View all moderation records with full details
-- **Search and Filter**: Find specific records quickly
-- **Detailed View**: Click any record to see complete information
-- **Export Capability**: Access to all moderation data
-
-### User Management
-- **User Administration**: Create, deactivate, and manage user accounts
-- **Password Management**: Reset user passwords from admin interface
-- **Invitation Codes**: Generate and manage invitation codes for registration
-- **Usage Statistics**: Monitor user activity and API usage
-- **User Limits**: Configure maximum number of users
-
-### Security Features
-- **Authentication Required**: All admin functions require login
-- **Session Timeout**: Automatic logout after inactivity
-- **Input Validation**: All configuration changes are validated
-- **Error Handling**: Comprehensive error messages and recovery
-- **Token-based API Access**: Secure API authentication with user tokens
+**React/Vue/Angular**: Use the API endpoints to build modern web applications
+**Mobile Apps**: Integrate with iOS/Android applications
+**Desktop Applications**: Build desktop clients using the REST API
+**Other Services**: Integrate with existing systems via HTTP requests
 
 ## Configuration
 
@@ -259,9 +220,7 @@ export API_HOST="0.0.0.0"
 export API_PORT="8000"
 export DEBUG="false"
 
-# Admin Authentication
-export ADMIN_USERNAME="admin"
-export ADMIN_PASSWORD="your-secure-password"
+# Authentication
 export SECRET_KEY="your-secret-key"
 
 # User Management Configuration
@@ -282,7 +241,7 @@ The system includes comprehensive user authentication and token management with 
 import requests
 
 # Register new user (with invitation code if required)
-response = requests.post("http://localhost:8000/user/register", json={
+response = requests.post("http://localhost:8000/api/user/register", json={
     "username": "myuser",
     "password": "securepass123",
     "invitation_code": "abc123def456"  # Include if REQUIRE_INVITATION_CODE=True
@@ -292,7 +251,7 @@ response = requests.post("http://localhost:8000/user/register", json={
 #### 2. **User Login & Session Management**
 ```python
 # Login to get access token
-response = requests.post("http://localhost:8000/user/login", json={
+response = requests.post("http://localhost:8000/api/user/login", json={
     "username": "myuser",
     "password": "securepass123"
 })
@@ -304,53 +263,47 @@ access_token = response.json()["access_token"]
 headers = {"Authorization": f"Bearer {access_token}"}
 
 # Create API token for applications
-response = requests.post("http://localhost:8000/user/tokens",
+response = requests.post("http://localhost:8000/api/user/tokens",
     json={"name": "My App Token"}, headers=headers)
 api_token = response.json()["token"]
 
 # List all tokens
-response = requests.get("http://localhost:8000/user/tokens", headers=headers)
+response = requests.get("http://localhost:8000/api/user/tokens", headers=headers)
 
 # Delete a token
-response = requests.delete(f"http://localhost:8000/user/tokens/{token_id}", headers=headers)
+response = requests.delete(f"http://localhost:8000/api/user/tokens/{token_id}", headers=headers)
 ```
 
 #### 4. **Content Moderation**
 ```python
 # Use API token for moderation requests
 api_headers = {"Authorization": f"Bearer {api_token}"}
-response = requests.post("http://localhost:8000/moderate",
+response = requests.post("http://localhost:8000/api/moderate",
     json={"content": "Content to moderate"}, headers=api_headers)
 ```
 
 #### 5. **Usage Monitoring**
 ```python
 # Check usage statistics
-response = requests.get("http://localhost:8000/user/usage", headers=headers)
+response = requests.get("http://localhost:8000/api/user/usage", headers=headers)
 stats = response.json()
 print(f"Total requests: {stats['total_requests']}")
 print(f"Requests today: {stats['requests_today']}")
 ```
 
-### Admin User Management
+### Admin Functions
 
-Administrators can manage users through the web interface:
+Administrators can manage the system through API endpoints and environment variables:
 
 1. **User Administration:**
-   - Create users directly (bypassing invitation codes)
-   - Deactivate/reactivate user accounts
-   - Reset user passwords
-   - View user activity and statistics
+   - Monitor user activity via `/api/admin/stats`
+   - View all moderation records via `/api/admin/records`
+   - Manage invitation codes via direct database access
 
-2. **Invitation Code Management:**
-   - Generate invitation codes with custom settings
-   - Set expiration dates and usage limits
-   - Monitor code usage and deactivate when needed
-
-3. **System Configuration:**
-   - Set maximum user limits
-   - Configure invitation code requirements
-   - Monitor system-wide usage statistics
+2. **System Configuration:**
+   - Set maximum user limits via `MAX_USERS` environment variable
+   - Configure invitation code requirements via `REQUIRE_INVITATION_CODE`
+   - Configure AI settings via environment variables
 
 ### Key Features
 - **Secure Authentication**: JWT-based session management with bcrypt password hashing
@@ -367,7 +320,7 @@ Administrators can manage users through the web interface:
 - **Access Control**: Role-based permissions (admin vs. user)
 - **Usage Monitoring**: Track and audit all API usage per user
 
-For detailed API documentation and examples, see [USER_AUTHENTICATION_GUIDE.md](USER_AUTHENTICATION_GUIDE.md).
+For detailed API documentation and examples, visit the interactive API docs at `/docs` when the server is running.
 
 ## Content Processing Logic
 
@@ -387,83 +340,49 @@ Based on probability thresholds:
 - **21-80%**: Manual Review (M)
 - **> 80%**: Rejected (R)
 
-## Production Deployment
-
-### Using Uvicorn
-```bash
-uvicorn app:app --host 0.0.0.0 --port 8000 --workers 4
-```
-
-### Using Gunicorn
-```bash
-pip install gunicorn
-gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-```
-
 ## Testing
 
-The system includes comprehensive test suites to verify functionality:
+Test the API functionality:
 
-### 1. **Basic API Test**
-```bash
-python test_api.py
-```
-Tests user registration, login, token creation, content moderation, and usage statistics.
-
-### 2. **Invitation Code Test**
-```bash
-python test_invitation.py
-```
-Tests admin login, invitation code creation, and registration validation.
-
-### 3. **Manual Testing**
+### Manual Testing
 ```bash
 # Test health endpoint
-curl http://localhost:8000/health
-
-# Test admin interface
-open http://localhost:8000/admin
+curl http://localhost:8000/api/health
 
 # Test API documentation
 open http://localhost:8000/docs
+
+# Test user registration
+curl -X POST http://localhost:8000/api/user/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "testpass123"}'
+
+# Test user login
+curl -X POST http://localhost:8000/api/user/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "testpass123"}'
 ```
 
-### Expected Test Results
+### Expected Results
 ```
-=== FIST API Test Suite ===
-✅ Health check: 200
-✅ User registration: 200
-✅ User login: 200
-✅ API token creation: 200
-✅ Content moderation: 200
-✅ Usage statistics: 200
-=== All tests completed ===
+✅ Health check: {"status": "healthy", ...}
+✅ User registration: {"user_id": "...", "username": "testuser", ...}
+✅ User login: {"access_token": "...", "user": {...}}
+✅ API documentation: Available at /docs
 ```
 
 ## File Structure
 
 ```
-├── app.py                          # Main FastAPI application
+├── app.py                          # Main FastAPI application (pure API)
 ├── models.py                       # Database models and Pydantic schemas
 ├── database.py                     # Database operations and connection
 ├── auth.py                         # Authentication and authorization
-├── api_routes.py                   # API endpoints for content moderation
-├── admin_routes.py                 # Admin web interface routes
+├── api_routes.py                   # Core API endpoints for content moderation
 ├── user_routes.py                  # User management API endpoints
 ├── services.py                     # Business logic and AI integration
 ├── config.py                       # Configuration management
 ├── ai_connector.py                 # AI model integration
-├── text_class.py                   # Text processing utilities
-├── templates/                      # HTML templates for admin interface
-│   ├── base.html                   # Base template
-│   ├── dashboard.html              # Admin dashboard
-│   ├── config.html                 # Configuration page
-│   ├── records.html                # Moderation records
-│   ├── users.html                  # User management
-│   └── login.html                  # Admin login
-├── test_api.py                     # API functionality tests
-├── test_invitation.py              # Invitation code tests
-├── USER_AUTHENTICATION_GUIDE.md   # Detailed authentication guide
 ├── pyproject.toml                  # Dependencies
 └── README.md                       # This file
 ```

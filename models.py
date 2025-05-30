@@ -32,10 +32,9 @@ class AIResult(BaseModel):
 
 
 class ModerationResult(BaseModel):
-    """Final moderation result model."""
+    """Final moderation result model - privacy focused."""
     moderation_id: str = Field(..., description="Unique identifier for this moderation")
-    original_content: str = Field(..., description="Original content submitted")
-    pierced_content: str = Field(..., description="Content portion that was analyzed")
+    content_hash: str = Field(..., description="SHA-256 hash of content for verification")
     ai_result: AIResult = Field(..., description="AI assessment result")
     final_decision: str = Field(..., description="Final decision: A (Approved), R (Rejected), M (Manual review)")
     reason: str = Field(..., description="Explanation for the final decision")
@@ -58,13 +57,7 @@ class HealthResponse(BaseModel):
     version: str = Field(..., description="API version")
 
 
-class StatsResponse(BaseModel):
-    """Statistics response model."""
-    total_moderations: int = Field(..., description="Total number of moderations performed")
-    approved_count: int = Field(..., description="Number of approved content")
-    rejected_count: int = Field(..., description="Number of rejected content")
-    manual_review_count: int = Field(..., description="Number of content requiring manual review")
-    average_probability: float = Field(..., description="Average inappropriateness probability")
+# Statistics removed for privacy protection
 
 
 class ErrorResponse(BaseModel):
@@ -102,6 +95,7 @@ class TokenResponse(BaseModel):
     token: Optional[str] = Field(None, description="Token value (only shown on creation)")
     created_at: datetime = Field(..., description="Token creation timestamp")
     last_used: Optional[datetime] = Field(None, description="Last usage timestamp")
+    usage_count: int = Field(..., description="Number of times this token has been used")
     is_active: bool = Field(..., description="Whether token is active")
 
 
@@ -119,12 +113,10 @@ class UserLoginResponse(BaseModel):
 
 
 class UsageStatsResponse(BaseModel):
-    """Response model for user usage statistics."""
+    """Response model for user usage statistics - privacy focused."""
     user_id: str = Field(..., description="User UUID")
-    total_requests: int = Field(..., description="Total API requests made")
-    requests_today: int = Field(..., description="API requests made today")
-    requests_this_month: int = Field(..., description="API requests made this month")
     tokens_count: int = Field(..., description="Number of active tokens")
+    # Individual token usage is shown in TokenResponse.usage_count
 
 
 class InvitationCodeResponse(BaseModel):
@@ -150,7 +142,6 @@ class User(Base):
 
     # Relationships
     tokens = relationship("APIToken", back_populates="user")
-    moderation_records = relationship("ModerationRecord", back_populates="user")
 
 
 class APIToken(Base):
@@ -163,6 +154,7 @@ class APIToken(Base):
     token_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     last_used = Column(DateTime, nullable=True)
+    usage_count = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
 
     # Relationships
@@ -183,23 +175,19 @@ class InvitationCode(Base):
 
 
 class ModerationRecord(Base):
-    """Database model for moderation records."""
+    """Database model for moderation records - privacy focused."""
     __tablename__ = "moderation_records"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.user_id"), nullable=True)  # Nullable for backward compatibility
-    original_content = Column(Text, nullable=False)
-    pierced_content = Column(Text, nullable=False)
+    # Store only hash of content for verification, not actual content
+    content_hash = Column(String(64), nullable=False)  # SHA-256 hash
     word_count = Column(Integer, nullable=False)
     percentage_used = Column(Float, nullable=False)  # type: ignore
     inappropriate_probability = Column(Integer, nullable=False)
-    ai_reason = Column(Text, nullable=False)
     final_decision = Column(String(1), nullable=False)  # A, R, M
-    final_reason = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
 
-    # Relationships
-    user = relationship("User", back_populates="moderation_records")
+    # No user relationship for privacy - tokens handle their own usage tracking
 
 
 class Admin(Base):
