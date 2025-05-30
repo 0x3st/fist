@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}FIST Admin - User Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-people"></i> User Management</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Messages -->
+{% if request.query_params.get('success') %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> {{ request.query_params.get('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+{% if request.query_params.get('error') %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> {{ request.query_params.get('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- User Statistics -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-stats border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Users
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ user_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-stats border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            User Limit
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ max_users }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-person-check text-info" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-stats border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Available Slots
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ max_users - user_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-person-plus text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-stats border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Invitation Required
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% if require_invitation %}Yes{% else %}No{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-envelope text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Management Actions -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">Create New User</h6>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/admin/users/create">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-person-plus"></i> Create User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">Create Invitation Code</h6>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/admin/invitation-codes/create">
+                    <div class="mb-3">
+                        <label for="max_uses" class="form-label">Max Uses (optional)</label>
+                        <input type="number" class="form-control" id="max_uses" name="max_uses" min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="expires_days" class="form-label">Expires in Days (optional)</label>
+                        <input type="number" class="form-control" id="expires_days" name="expires_days" min="1">
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-envelope-plus"></i> Create Code
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">All Users</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Created</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user_item in users %}
+                            <tr>
+                                <td><code>{{ user_item.user_id[:8] }}...</code></td>
+                                <td>{{ user_item.username }}</td>
+                                <td>{{ user_item.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if user_item.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user_item.is_active %}
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-warning"
+                                                onclick="changePassword('{{ user_item.user_id }}', '{{ user_item.username }}')">
+                                            <i class="bi bi-key"></i> Change Password
+                                        </button>
+                                        <form method="post" action="/admin/users/{{ user_item.user_id }}/deactivate"
+                                              style="display: inline;"
+                                              onsubmit="return confirm('Are you sure you want to deactivate {{ user_item.username }}?')">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-person-x"></i> Deactivate
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">No actions available</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invitation Codes Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Invitation Codes</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Code</th>
+                                <th>Created By</th>
+                                <th>Created</th>
+                                <th>Expires</th>
+                                <th>Uses</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for code in invitation_codes %}
+                            <tr>
+                                <td><code>{{ code.code }}</code></td>
+                                <td>{{ code.created_by }}</td>
+                                <td>{{ code.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if code.expires_at %}
+                                        {{ code.expires_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ code.current_uses }}
+                                    {% if code.max_uses %}
+                                        / {{ code.max_uses }}
+                                    {% else %}
+                                        / ∞
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if code.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if code.is_active %}
+                                    <form method="post" action="/admin/invitation-codes/{{ code.code }}/deactivate"
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Are you sure you want to deactivate this invitation code?')">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="bi bi-x-circle"></i> Deactivate
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-muted">No actions available</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change User Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="changePasswordForm" method="post">
+                <div class="modal-body">
+                    <p>Changing password for user: <strong id="changePasswordUsername"></strong></p>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Change Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function changePassword(userId, username) {
+    document.getElementById('changePasswordUsername').textContent = username;
+    document.getElementById('changePasswordForm').action = `/admin/users/${userId}/change-password`;
+    new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
+}
+</script>
+{% endblock %}

@@ -23,10 +23,9 @@ from fastapi.responses import JSONResponse
 
 from config import Config
 from models import ErrorResponse
-from database import create_tables, load_config_from_database
+from database import create_tables
 from api_routes import router as api_router
 from admin_routes import router as admin_router
-from user_routes import router as user_router
 
 # Lifespan event handler
 @asynccontextmanager
@@ -34,7 +33,6 @@ async def lifespan(_app: FastAPI):
     """Lifespan event handler for startup and shutdown."""
     # Startup
     create_tables()
-    load_config_from_database()
     yield
     # Shutdown (if needed)
 
@@ -67,7 +65,6 @@ async def global_exception_handler(_request: Request, exc: Exception):
 # Include routers
 app.include_router(api_router)
 app.include_router(admin_router)
-app.include_router(user_router)
 
 if __name__ == "__main__":
     import uvicorn

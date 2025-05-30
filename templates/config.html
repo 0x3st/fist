@@ -32,17 +32,17 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="percentages" class="form-label">Percentages</label>
-                        <input type="text" class="form-control" id="percentages" name="percentages" 
+                        <input type="text" class="form-control" id="percentages" name="percentages"
                                value="{{ config.percentages|join(', ') }}" required>
                         <div class="form-text">
                             Comma-separated percentages (0-1) for different content lengths.
                             Example: 0.8, 0.6, 0.4, 0.2
                         </div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="thresholds" class="form-label">Word Count Thresholds</label>
-                        <input type="text" class="form-control" id="thresholds" name="thresholds" 
+                        <input type="text" class="form-control" id="thresholds" name="thresholds"
                                value="{{ config.thresholds|join(', ') }}" required>
                         <div class="form-text">
                             Comma-separated word count thresholds.
@@ -72,16 +72,16 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="low_threshold" class="form-label">Low Threshold (%)</label>
-                        <input type="number" class="form-control" id="low_threshold" name="low_threshold" 
+                        <input type="number" class="form-control" id="low_threshold" name="low_threshold"
                                value="{{ config.probability_thresholds.low }}" min="0" max="100" required>
                         <div class="form-text">
                             Content with probability ≤ this value will be <strong class="text-success">approved</strong>.
                         </div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="high_threshold" class="form-label">High Threshold (%)</label>
-                        <input type="number" class="form-control" id="high_threshold" name="high_threshold" 
+                        <input type="number" class="form-control" id="high_threshold" name="high_threshold"
                                value="{{ config.probability_thresholds.high }}" min="0" max="100" required>
                         <div class="form-text">
                             Content with probability &gt; this value will be <strong class="text-danger">rejected</strong>.
@@ -103,7 +103,7 @@
 
     <!-- AI Model Configuration -->
     <div class="row">
-        <div class="col-12">
+        <div class="col-md-6">
             <div class="card shadow mb-4">
                 <div class="card-header">
                     <h6 class="m-0 font-weight-bold text-primary">AI Model Settings</h6>
@@ -122,6 +122,34 @@
                         <div class="form-text">
                             Select the AI model to use for content moderation.
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management Configuration -->
+        <div class="col-md-6">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">User Management Settings</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="max_users" class="form-label">Maximum Users</label>
+                        <input type="number" class="form-control" id="max_users" name="max_users"
+                               value="{{ config.max_users }}" min="1" max="10000" required>
+                        <div class="form-text">
+                            Maximum number of users allowed to register in the system.
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Current Status:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Current Users: {{ current_user_count }}</li>
+                            <li>Available Slots: {{ config.max_users - current_user_count }}</li>
+                            <li>Utilization: {{ "%.1f"|format((current_user_count / config.max_users) * 100) }}%</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -152,7 +180,8 @@ document.querySelector('form').addEventListener('submit', function(e) {
     const thresholds = document.getElementById('thresholds').value;
     const lowThreshold = parseInt(document.getElementById('low_threshold').value);
     const highThreshold = parseInt(document.getElementById('high_threshold').value);
-    
+    const maxUsers = parseInt(document.getElementById('max_users').value);
+
     // Validate percentage format
     const percentageArray = percentages.split(',').map(p => parseFloat(p.trim()));
     if (percentageArray.some(p => isNaN(p) || p < 0 || p > 1)) {
@@ -160,7 +189,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
         alert('Percentages must be numbers between 0 and 1');
         return;
     }
-    
+
     // Validate threshold format
     const thresholdArray = thresholds.split(',').map(t => parseInt(t.trim()));
     if (thresholdArray.some(t => isNaN(t) || t <= 0)) {
@@ -168,11 +197,18 @@ document.querySelector('form').addEventListener('submit', function(e) {
         alert('Thresholds must be positive integers');
         return;
     }
-    
+
     // Validate probability thresholds
     if (lowThreshold >= highThreshold) {
         e.preventDefault();
         alert('Low threshold must be less than high threshold');
+        return;
+    }
+
+    // Validate max users
+    if (isNaN(maxUsers) || maxUsers < 1 || maxUsers > 10000) {
+        e.preventDefault();
+        alert('Maximum users must be a number between 1 and 10000');
         return;
     }
 });
