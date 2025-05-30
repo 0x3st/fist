@@ -203,24 +203,9 @@ async def user_dashboard(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/user/tokens", response_class=HTMLResponse)
-async def user_tokens_page(request: Request, db: Session = Depends(get_db)):
-    """User tokens management page."""
-    try:
-        user_id = require_user_auth(request)
-        user = DatabaseOperations.get_user_by_id(db, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        tokens = DatabaseOperations.get_user_tokens(db, user_id)
-
-        return templates.TemplateResponse("user_tokens.html", {
-            "request": request,
-            "user": user,
-            "tokens": tokens
-        })
-
-    except HTTPException:
-        return RedirectResponse(url="/user", status_code=302)
+async def user_tokens_page():
+    """User tokens management page (redirect to settings)."""
+    return RedirectResponse(url="/user/settings", status_code=302)
 
 
 @router.post("/user/tokens/create")
@@ -250,14 +235,14 @@ async def user_create_token(
         )
 
         return RedirectResponse(
-            url=f"/user/tokens?success=Token '{name}' created successfully&new_token={token}",
+            url=f"/user/settings?success=Token '{name}' created successfully&new_token={token}",
             status_code=302
         )
 
     except HTTPException:
         return RedirectResponse(url="/user", status_code=302)
     except Exception as e:
-        return RedirectResponse(url=f"/user/tokens?error={str(e)}", status_code=302)
+        return RedirectResponse(url=f"/user/settings?error={str(e)}", status_code=302)
 
 
 @router.post("/user/tokens/{token_id}/delete")
@@ -274,26 +259,30 @@ async def user_delete_token(
         if not success:
             raise Exception("Token not found or access denied")
 
-        return RedirectResponse(url="/user/tokens?success=Token deleted successfully", status_code=302)
+        return RedirectResponse(url="/user/settings?success=Token deleted successfully", status_code=302)
 
     except HTTPException:
         return RedirectResponse(url="/user", status_code=302)
     except Exception as e:
-        return RedirectResponse(url=f"/user/tokens?error={str(e)}", status_code=302)
+        return RedirectResponse(url=f"/user/settings?error={str(e)}", status_code=302)
 
 
 @router.get("/user/settings", response_class=HTMLResponse)
 async def user_settings_page(request: Request, db: Session = Depends(get_db)):
-    """User settings page."""
+    """User settings page (consolidated with token management)."""
     try:
         user_id = require_user_auth(request)
         user = DatabaseOperations.get_user_by_id(db, user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        return templates.TemplateResponse("user_settings.html", {
+        # Get user tokens
+        tokens = DatabaseOperations.get_user_tokens(db, user_id)
+
+        return templates.TemplateResponse("user_account_settings.html", {
             "request": request,
-            "user": user
+            "user": user,
+            "tokens": tokens
         })
 
     except HTTPException:

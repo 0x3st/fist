@@ -103,11 +103,15 @@ async def admin_dashboard(request: Request, user: str = Depends(require_auth), d
     })
 
 
-@router.get("/admin/config", response_class=HTMLResponse)
-async def admin_config_page(request: Request, user: str = Depends(require_auth), db: Session = Depends(get_db)):
-    """Admin configuration page."""
+@router.get("/admin/settings", response_class=HTMLResponse)
+async def admin_settings_page(request: Request, user: str = Depends(require_auth), db: Session = Depends(get_db)):
+    """Admin settings page (consolidated configuration and user management)."""
     # Get current user count
     current_user_count = DatabaseOperations.get_user_count(db)
+
+    # Get users and invitation codes
+    users = DatabaseOperations.get_all_users(db, limit=100)
+    invitation_codes = DatabaseOperations.get_all_invitation_codes(db)
 
     # Get current configuration
     current_config: Dict[str, Any] = {
@@ -120,12 +124,22 @@ async def admin_config_page(request: Request, user: str = Depends(require_auth),
         "max_users": Config.MAX_USERS
     }
 
-    return templates.TemplateResponse("config.html", {
+    return templates.TemplateResponse("admin_settings.html", {
         "request": request,
         "user": user,
         "config": current_config,
-        "current_user_count": current_user_count
+        "current_user_count": current_user_count,
+        "user_count": current_user_count,
+        "max_users": Config.MAX_USERS,
+        "users": users,
+        "invitation_codes": invitation_codes,
+        "require_invitation": Config.REQUIRE_INVITATION_CODE
     })
+
+@router.get("/admin/config", response_class=HTMLResponse)
+async def admin_config_page():
+    """Admin configuration page (redirect to settings)."""
+    return RedirectResponse(url="/admin/settings", status_code=302)
 
 
 @router.post("/admin/config")
@@ -192,7 +206,11 @@ async def admin_update_config(
         global moderation_service
         moderation_service.update_ai_config(ai_api_key, ai_base_url, ai_model)
 
-        return templates.TemplateResponse("config.html", {
+        # Get users and invitation codes for the template
+        users = DatabaseOperations.get_all_users(db, limit=100)
+        invitation_codes = DatabaseOperations.get_all_invitation_codes(db)
+
+        return templates.TemplateResponse("admin_settings.html", {
             "request": request,
             "user": user,
             "config": {
@@ -205,6 +223,11 @@ async def admin_update_config(
                 "max_users": max_users
             },
             "current_user_count": current_user_count,
+            "user_count": current_user_count,
+            "max_users": max_users,
+            "users": users,
+            "invitation_codes": invitation_codes,
+            "require_invitation": Config.REQUIRE_INVITATION_CODE,
             "success": "Configuration updated successfully!"
         })
 
@@ -212,7 +235,11 @@ async def admin_update_config(
         # Get current user count for error response
         current_user_count = DatabaseOperations.get_user_count(db)
 
-        return templates.TemplateResponse("config.html", {
+        # Get users and invitation codes for the template
+        users = DatabaseOperations.get_all_users(db, limit=100)
+        invitation_codes = DatabaseOperations.get_all_invitation_codes(db)
+
+        return templates.TemplateResponse("admin_settings.html", {
             "request": request,
             "user": user,
             "config": {
@@ -225,6 +252,11 @@ async def admin_update_config(
                 "max_users": Config.MAX_USERS
             },
             "current_user_count": current_user_count,
+            "user_count": current_user_count,
+            "max_users": Config.MAX_USERS,
+            "users": users,
+            "invitation_codes": invitation_codes,
+            "require_invitation": Config.REQUIRE_INVITATION_CODE,
             "error": f"Configuration update failed: {str(e)}"
         })
 
@@ -243,21 +275,9 @@ async def admin_records_page(request: Request, user: str = Depends(require_auth)
 
 # User Management Routes
 @router.get("/admin/users", response_class=HTMLResponse)
-async def admin_users_page(request: Request, user: str = Depends(require_auth), db: Session = Depends(get_db)):
-    """Admin users management page."""
-    users = DatabaseOperations.get_all_users(db, limit=100)
-    user_count = DatabaseOperations.get_user_count(db)
-    invitation_codes = DatabaseOperations.get_all_invitation_codes(db)
-
-    return templates.TemplateResponse("users.html", {
-        "request": request,
-        "user": user,
-        "users": users,
-        "user_count": user_count,
-        "max_users": Config.MAX_USERS,
-        "invitation_codes": invitation_codes,
-        "require_invitation": Config.REQUIRE_INVITATION_CODE
-    })
+async def admin_users_page():
+    """Admin users management page (redirect to settings)."""
+    return RedirectResponse(url="/admin/settings", status_code=302)
 
 
 @router.post("/admin/users/create")
@@ -284,10 +304,10 @@ async def admin_create_user(
         password_hash = get_password_hash(password)
         DatabaseOperations.create_user(db, username, password_hash)
 
-        return RedirectResponse(url="/admin/users?success=User created successfully", status_code=302)
+        return RedirectResponse(url="/admin/settings?success=User created successfully", status_code=302)
 
     except Exception as e:
-        return RedirectResponse(url=f"/admin/users?error={str(e)}", status_code=302)
+        return RedirectResponse(url=f"/admin/settings?error={str(e)}", status_code=302)
 
 
 @router.post("/admin/users/{user_id}/deactivate")
@@ -302,10 +322,10 @@ async def admin_deactivate_user(
         if not success:
             raise Exception("User not found")
 
-        return RedirectResponse(url="/admin/users?success=User deactivated successfully", status_code=302)
+        return RedirectResponse(url="/admin/settings?success=User deactivated successfully", status_code=302)
 
     except Exception as e:
-        return RedirectResponse(url=f"/admin/users?error={str(e)}", status_code=302)
+        return RedirectResponse(url=f"/admin/settings?error={str(e)}", status_code=302)
 
 
 # User password change functionality removed for security reasons
@@ -338,10 +358,10 @@ async def admin_create_invitation_code(
             max_uses=max_uses
         )
 
-        return RedirectResponse(url="/admin/users?success=Invitation code created successfully", status_code=302)
+        return RedirectResponse(url="/admin/settings?success=Invitation code created successfully", status_code=302)
 
     except Exception as e:
-        return RedirectResponse(url=f"/admin/users?error={str(e)}", status_code=302)
+        return RedirectResponse(url=f"/admin/settings?error={str(e)}", status_code=302)
 
 
 @router.post("/admin/invitation-codes/{code}/deactivate")
@@ -356,10 +376,10 @@ async def admin_deactivate_invitation_code(
         if not success:
             raise Exception("Invitation code not found")
 
-        return RedirectResponse(url="/admin/users?success=Invitation code deactivated successfully", status_code=302)
+        return RedirectResponse(url="/admin/settings?success=Invitation code deactivated successfully", status_code=302)
 
     except Exception as e:
-        return RedirectResponse(url=f"/admin/users?error={str(e)}", status_code=302)
+        return RedirectResponse(url=f"/admin/settings?error={str(e)}", status_code=302)
 
 
 @router.post("/admin/change-password")
@@ -391,7 +411,7 @@ async def admin_change_own_password(
             # If admin doesn't exist in database, create them
             DatabaseOperations.create_admin(db, user, new_password_hash)
 
-        return RedirectResponse(url="/admin/users?success=Admin password changed successfully", status_code=302)
+        return RedirectResponse(url="/admin/settings?success=Admin password changed successfully", status_code=302)
 
     except Exception as e:
-        return RedirectResponse(url=f"/admin/users?error={str(e)}", status_code=302)
+        return RedirectResponse(url=f"/admin/settings?error={str(e)}", status_code=302)

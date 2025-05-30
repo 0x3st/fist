@@ -4,8 +4,7 @@ User API routes for FIST Content Moderation System.
 This module contains all user-related API endpoints including
 registration, login, token management, and usage statistics.
 """
-import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends, status, Header
 from sqlalchemy.orm import Session
