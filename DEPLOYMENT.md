@@ -154,8 +154,19 @@ After successful deployment, you'll need to create the initial admin user. You c
 
 4. **API Endpoints Not Working**:
    - Verify `api/index.py` is present
-   - Check `vercel.json` configuration
+   - Check `vercel.json` configuration (should not have both `builds` and `functions`)
    - Review function logs in Vercel dashboard
+
+5. **Vercel Configuration Error: "functions property cannot be used with builds"**:
+   - Remove the `builds` property from `vercel.json`
+   - Use only the `functions` property for modern Vercel deployments
+   - Ensure `api/index.py` exports the FastAPI app directly
+
+6. **Vercel Runtime Error: "Function Runtimes must have a valid version"**:
+   - Remove the `runtime` property from `functions` configuration in `vercel.json`
+   - Vercel automatically detects Python version from `Pipfile` or uses the latest available
+   - Ensure `Pipfile` specifies the correct Python version (3.12 recommended)
+   - Use simplified `vercel.json` configuration without explicit runtime specification
 
 ### Debugging
 
