@@ -28,6 +28,7 @@ from models import ErrorResponse
 from database import create_tables, load_config_from_database
 from api_routes import router as api_router
 from user_routes import router as user_router
+from admin_routes import router as admin_router
 
 # Lifespan event handler
 @asynccontextmanager
@@ -68,6 +69,7 @@ async def global_exception_handler(_request: Request, exc: Exception):
 # Include routers
 app.include_router(api_router)
 app.include_router(user_router)
+app.include_router(admin_router)
 
 if __name__ == "__main__":
     import uvicorn

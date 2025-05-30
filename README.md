@@ -180,11 +180,21 @@ Content-Type: application/json
 - `DELETE /api/user/tokens/{token_id}` - Delete API token (requires user auth)
 - `GET /api/user/usage` - Get usage statistics (requires user auth)
 
+### Admin Management Endpoints
+- `POST /api/admin/login` - Admin login
+- `GET /api/admin/users` - Get all users (requires admin auth)
+- `DELETE /api/admin/users/{user_id}` - Deactivate user (requires admin auth)
+- `PUT /api/admin/user-limit` - Update user limit (requires admin auth)
+- `POST /api/admin/invitation-codes` - Create invitation code (requires admin auth)
+- `GET /api/admin/invitation-codes` - List invitation codes (requires admin auth)
+- `DELETE /api/admin/invitation-codes/{code}` - Deactivate invitation code (requires admin auth)
+- `PUT /api/admin/ai-config` - Update AI configuration (requires admin auth)
+- `PUT /api/admin/password` - Update admin password (requires admin auth)
+
 ### Privacy Protection
-- No admin statistics or records endpoints
 - Content stored as SHA-256 hash only
 - No historical data tracking
-- Token usage tracking only
+- Individual token usage tracking only
 
 ## Frontend Integration
 
@@ -293,17 +303,63 @@ print(f"Requests today: {stats['requests_today']}")
 
 ### Admin Functions
 
-Administrators can manage the system through API endpoints and environment variables:
+Administrators can manage the system through dedicated API endpoints:
 
-1. **User Administration:**
-   - Monitor user activity via `/api/admin/stats`
-   - View all moderation records via `/api/admin/records`
-   - Manage invitation codes via direct database access
+#### 1. **Admin Authentication**
+```python
+import requests
 
-2. **System Configuration:**
-   - Set maximum user limits via `MAX_USERS` environment variable
-   - Configure invitation code requirements via `REQUIRE_INVITATION_CODE`
-   - Configure AI settings via environment variables
+# Admin login
+response = requests.post("http://localhost:8000/api/admin/login", json={
+    "username": "admin",
+    "password": "admin123"
+})
+admin_token = response.json()["access_token"]
+admin_headers = {"Authorization": f"Bearer {admin_token}"}
+```
+
+#### 2. **User Management**
+```python
+# Get all users
+response = requests.get("http://localhost:8000/api/admin/users", headers=admin_headers)
+users = response.json()["users"]
+
+# Deactivate a user
+response = requests.delete(f"http://localhost:8000/api/admin/users/{user_id}", headers=admin_headers)
+
+# Update user limit
+response = requests.put("http://localhost:8000/api/admin/user-limit",
+    json={"max_users": 200}, headers=admin_headers)
+```
+
+#### 3. **Invitation Code Management**
+```python
+# Create invitation code
+response = requests.post("http://localhost:8000/api/admin/invitation-codes",
+    json={"max_uses": 10, "expires_at": "2024-12-31T23:59:59"}, headers=admin_headers)
+
+# List all invitation codes
+response = requests.get("http://localhost:8000/api/admin/invitation-codes", headers=admin_headers)
+
+# Deactivate invitation code
+response = requests.delete(f"http://localhost:8000/api/admin/invitation-codes/{code}", headers=admin_headers)
+```
+
+#### 4. **System Configuration**
+```python
+# Update AI configuration
+response = requests.put("http://localhost:8000/api/admin/ai-config", json={
+    "ai_api_key": "new-api-key",
+    "ai_base_url": "https://api.newprovider.com",
+    "ai_model": "new-model-name"
+}, headers=admin_headers)
+
+# Update admin password
+response = requests.put("http://localhost:8000/api/admin/password", json={
+    "current_password": "admin123",
+    "new_password": "newSecurePassword456"
+}, headers=admin_headers)
+```
 
 ### Key Features
 - **Secure Authentication**: JWT-based session management with bcrypt password hashing
@@ -380,6 +436,7 @@ curl -X POST http://localhost:8000/api/user/login \
 ├── auth.py                         # Authentication and authorization
 ├── api_routes.py                   # Core API endpoints for content moderation
 ├── user_routes.py                  # User management API endpoints
+├── admin_routes.py                 # Admin management API endpoints
 ├── services.py                     # Business logic and AI integration
 ├── config.py                       # Configuration management
 ├── ai_connector.py                 # AI model integration

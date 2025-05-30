@@ -9,7 +9,6 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, status, Cookie, Header, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -171,3 +170,62 @@ def verify_user_token(token: str) -> Optional[str]:
         return user_id
     except JWTError:
         return None
+
+
+def create_admin_access_token(admin_id: str, expires_delta: Optional[timedelta] = None) -> str:
+    """Create a JWT access token for admin sessions."""
+    to_encode = {"sub": admin_id, "type": "admin"}
+    if expires_delta:
+        expire = datetime.now() + expires_delta
+    else:
+        expire = datetime.now() + timedelta(minutes=Config.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, Config.SECRET_KEY, algorithm=Config.ALGORITHM)
+    return encoded_jwt
+
+
+def verify_admin_token(token: str) -> Optional[str]:
+    """Verify an admin JWT token and return the admin_id."""
+    try:
+        payload = jwt.decode(token, Config.SECRET_KEY, algorithms=[Config.ALGORITHM])
+        admin_id: Optional[str] = payload.get("sub")
+        token_type: Optional[str] = payload.get("type")
+        if admin_id is None or token_type != "admin":
+            return None
+        return admin_id
+    except JWTError:
+        return None
+
+
+def require_admin_auth(
+    authorization: str = Header(None),
+    db: Session = Depends(lambda: None)  # Will be properly injected from get_db
+) -> str:
+    """Require admin authentication for admin endpoints."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Valid admin token required",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    token = authorization[7:]  # Remove "Bearer " prefix
+    admin_id = verify_admin_token(token)
+    if not admin_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Valid admin token required",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # Verify admin still exists and is active
+    from database import DatabaseOperations
+    admin = DatabaseOperations.get_admin_by_id(db, admin_id)
+    if not admin or not bool(admin.is_active):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin account not found or inactive",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    return admin_id

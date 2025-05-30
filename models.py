@@ -129,6 +129,51 @@ class InvitationCodeResponse(BaseModel):
     is_active: bool = Field(..., description="Whether code is active")
 
 
+# Admin Management Models
+class AdminLoginRequest(BaseModel):
+    """Request model for admin login."""
+    username: str = Field(..., description="Admin username")
+    password: str = Field(..., description="Admin password")
+
+
+class AdminLoginResponse(BaseModel):
+    """Response model for admin login."""
+    access_token: str = Field(..., description="JWT access token")
+    token_type: str = Field(default="bearer", description="Token type")
+    admin_id: str = Field(..., description="Admin UUID")
+    username: str = Field(..., description="Admin username")
+
+
+class AdminUserListResponse(BaseModel):
+    """Response model for admin user list."""
+    users: List[UserResponse] = Field(..., description="List of users")
+    total_count: int = Field(..., description="Total number of users")
+
+
+class InvitationCodeCreateRequest(BaseModel):
+    """Request model for creating invitation codes."""
+    expires_at: Optional[datetime] = Field(None, description="Expiration timestamp")
+    max_uses: Optional[int] = Field(None, description="Maximum number of uses")
+
+
+class UserLimitUpdateRequest(BaseModel):
+    """Request model for updating user limit."""
+    max_users: int = Field(..., description="Maximum number of users allowed", ge=1)
+
+
+class AIConfigUpdateRequest(BaseModel):
+    """Request model for updating AI configuration."""
+    ai_api_key: Optional[str] = Field(None, description="AI API key")
+    ai_base_url: Optional[str] = Field(None, description="AI base URL")
+    ai_model: Optional[str] = Field(None, description="AI model name")
+
+
+class AdminPasswordUpdateRequest(BaseModel):
+    """Request model for updating admin password."""
+    current_password: str = Field(..., description="Current password")
+    new_password: str = Field(..., description="New password", min_length=6)
+
+
 # SQLAlchemy Database Models
 class User(Base):
     """Database model for users."""

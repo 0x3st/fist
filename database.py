@@ -385,6 +385,11 @@ class DatabaseOperations:
         return db.query(Admin).filter(Admin.username == username, Admin.is_active == True).first()
 
     @staticmethod
+    def get_admin_by_id(db: Session, admin_id: str) -> Optional[Admin]:
+        """Get admin by ID."""
+        return db.query(Admin).filter(Admin.admin_id == admin_id, Admin.is_active == True).first()
+
+    @staticmethod
     def update_admin_password(db: Session, username: str, new_password_hash: str) -> bool:
         """Update admin password."""
         admin = db.query(Admin).filter(Admin.username == username, Admin.is_active == True).first()
