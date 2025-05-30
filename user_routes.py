@@ -22,7 +22,7 @@ from auth import (
 from config import Config
 
 # Create user router
-router = APIRouter(prefix="/user", tags=["User Management"])
+router = APIRouter(prefix="/api/user", tags=["User Management"])
 
 
 @router.post("/register", response_model=UserResponse)

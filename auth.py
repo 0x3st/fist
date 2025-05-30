@@ -54,11 +54,24 @@ def verify_token(token: str) -> Optional[str]:
         return None
 
 
+def verify_admin_credentials(db: Session, username: str, password: str) -> bool:
+    """Verify admin credentials against database."""
+    from database import DatabaseOperations
+
+    admin = DatabaseOperations.get_admin_by_username(db, username)
+    if not admin:
+        return False
+
+    return verify_password(password, admin.password_hash)  # type: ignore
+
+
 def get_current_user(token: str = Cookie(None)):
     """Get current authenticated user from cookie."""
     if not token:
         return None
     username = verify_token(token)
+    # For backward compatibility, still check config admin username
+    # but in production, this should be validated against database
     if username != Config.ADMIN_USERNAME:
         return None
     return username

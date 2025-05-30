@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from config import Config
 from database import get_db, DatabaseOperations
-from auth import get_current_user, require_auth, create_access_token, get_password_hash
+from auth import get_current_user, require_auth, create_access_token, get_password_hash, verify_admin_credentials
 from services import ModerationService
 
 # Create admin router
@@ -36,29 +36,49 @@ async def admin_login_page(request: Request, user: Optional[str] = Depends(get_c
 
 
 @router.post("/admin/login")
-async def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
+async def admin_login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     """Handle admin login."""
-    if username != Config.ADMIN_USERNAME or password != Config.ADMIN_PASSWORD:
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "error": "Invalid username or password"
-        })
+    # First try database authentication
+    if verify_admin_credentials(db, username, password):
+        # Create access token
+        access_token_expires = timedelta(minutes=Config.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": username}, expires_delta=access_token_expires
+        )
 
-    # Create access token
-    access_token_expires = timedelta(minutes=Config.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": username}, expires_delta=access_token_expires
-    )
+        # Redirect to dashboard with cookie
+        response = RedirectResponse(url="/admin/dashboard", status_code=302)
+        response.set_cookie(
+            key="token",
+            value=access_token,
+            max_age=Config.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            httponly=True
+        )
+        return response
 
-    # Redirect to dashboard with cookie
-    response = RedirectResponse(url="/admin/dashboard", status_code=302)
-    response.set_cookie(
-        key="token",
-        value=access_token,
-        max_age=Config.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=True
-    )
-    return response
+    # Fallback to config-based authentication for backward compatibility
+    elif username == Config.ADMIN_USERNAME and password == Config.ADMIN_PASSWORD:
+        # Create access token
+        access_token_expires = timedelta(minutes=Config.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": username}, expires_delta=access_token_expires
+        )
+
+        # Redirect to dashboard with cookie
+        response = RedirectResponse(url="/admin/dashboard", status_code=302)
+        response.set_cookie(
+            key="token",
+            value=access_token,
+            max_age=Config.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            httponly=True
+        )
+        return response
+
+    # Authentication failed
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "error": "Invalid username or password"
+    })
 
 
 @router.get("/admin/logout")
@@ -95,6 +115,8 @@ async def admin_config_page(request: Request, user: str = Depends(require_auth),
         "thresholds": Config.DEFAULT_THRESHOLDS,
         "probability_thresholds": Config.DEFAULT_PROBABILITY_THRESHOLDS,
         "ai_model": Config.AI_MODEL,
+        "ai_base_url": Config.AI_BASE_URL,
+        "ai_api_key": Config.AI_API_KEY,
         "max_users": Config.MAX_USERS
     }
 
@@ -116,6 +138,8 @@ async def admin_update_config(
     low_threshold: int = Form(...),
     high_threshold: int = Form(...),
     ai_model: str = Form(...),
+    ai_base_url: str = Form(...),
+    ai_api_key: str = Form(...),
     max_users: int = Form(...)
 ):
     """Handle configuration updates."""
@@ -147,6 +171,8 @@ async def admin_update_config(
             ("thresholds", str(new_thresholds)),
             ("probability_thresholds", f'{{"low": {low_threshold}, "high": {high_threshold}}}'),
             ("ai_model", ai_model),
+            ("ai_base_url", ai_base_url),
+            ("ai_api_key", ai_api_key),
             ("max_users", str(max_users))
         ]
 
@@ -158,11 +184,13 @@ async def admin_update_config(
         Config.DEFAULT_THRESHOLDS = new_thresholds
         Config.DEFAULT_PROBABILITY_THRESHOLDS = {"low": low_threshold, "high": high_threshold}
         Config.AI_MODEL = ai_model
+        Config.AI_BASE_URL = ai_base_url
+        Config.AI_API_KEY = ai_api_key
         Config.MAX_USERS = max_users
 
-        # Reinitialize moderation service with new model
+        # Update moderation service with new AI configuration
         global moderation_service
-        moderation_service = ModerationService()
+        moderation_service.update_ai_config(ai_api_key, ai_base_url, ai_model)
 
         return templates.TemplateResponse("config.html", {
             "request": request,
@@ -172,6 +200,8 @@ async def admin_update_config(
                 "thresholds": new_thresholds,
                 "probability_thresholds": {"low": low_threshold, "high": high_threshold},
                 "ai_model": ai_model,
+                "ai_base_url": ai_base_url,
+                "ai_api_key": ai_api_key,
                 "max_users": max_users
             },
             "current_user_count": current_user_count,
@@ -190,6 +220,8 @@ async def admin_update_config(
                 "thresholds": Config.DEFAULT_THRESHOLDS,
                 "probability_thresholds": Config.DEFAULT_PROBABILITY_THRESHOLDS,
                 "ai_model": Config.AI_MODEL,
+                "ai_base_url": Config.AI_BASE_URL,
+                "ai_api_key": Config.AI_API_KEY,
                 "max_users": Config.MAX_USERS
             },
             "current_user_count": current_user_count,
@@ -276,24 +308,8 @@ async def admin_deactivate_user(
         return RedirectResponse(url=f"/admin/users?error={str(e)}", status_code=302)
 
 
-@router.post("/admin/users/{user_id}/change-password")
-async def admin_change_user_password(
-    user_id: str,
-    new_password: str = Form(...),
-    user: str = Depends(require_auth),
-    db: Session = Depends(get_db)
-):
-    """Change user password."""
-    try:
-        password_hash = get_password_hash(new_password)
-        success = DatabaseOperations.update_user_password(db, user_id, password_hash)
-        if not success:
-            raise Exception("User not found")
-
-        return RedirectResponse(url="/admin/users?success=Password changed successfully", status_code=302)
-
-    except Exception as e:
-        return RedirectResponse(url=f"/admin/users?error={str(e)}", status_code=302)
+# User password change functionality removed for security reasons
+# Admin should not be able to change user passwords
 
 
 @router.post("/admin/invitation-codes/create")
@@ -355,14 +371,27 @@ async def admin_change_own_password(
 ):
     """Change admin password."""
     try:
-        # Verify current password
-        if current_password != Config.ADMIN_PASSWORD:
-            raise Exception("Current password is incorrect")
+        # Verify current password against database first
+        if not verify_admin_credentials(db, user, current_password):
+            # Fallback to config-based verification for backward compatibility
+            if user != Config.ADMIN_USERNAME or current_password != Config.ADMIN_PASSWORD:
+                raise Exception("Current password is incorrect")
 
-        # Update admin password in environment/config
-        # Note: This would require updating the environment variable or config file
-        # For now, we'll just show a message that this needs to be done manually
-        raise Exception("Admin password change requires manual configuration update")
+        # Validate new password
+        if len(new_password) < 6:
+            raise Exception("New password must be at least 6 characters long")
+
+        # Hash the new password
+        new_password_hash = get_password_hash(new_password)
+
+        # Update admin password in database
+        success = DatabaseOperations.update_admin_password(db, user, new_password_hash)
+
+        if not success:
+            # If admin doesn't exist in database, create them
+            DatabaseOperations.create_admin(db, user, new_password_hash)
+
+        return RedirectResponse(url="/admin/users?success=Admin password changed successfully", status_code=302)
 
     except Exception as e:
         return RedirectResponse(url=f"/admin/users?error={str(e)}", status_code=302)

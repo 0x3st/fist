@@ -202,6 +202,18 @@ class ModerationRecord(Base):
     user = relationship("User", back_populates="moderation_records")
 
 
+class Admin(Base):
+    """Database model for admin credentials."""
+    __tablename__ = "admins"
+
+    admin_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String(50), nullable=False, unique=True)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    is_active = Column(Boolean, default=True)
+
+
 class ConfigRecord(Base):
     """Database model for system configuration."""
     __tablename__ = "config_records"

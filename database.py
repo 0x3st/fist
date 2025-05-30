@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from config import Config
-from models import Base, ModerationRecord, ConfigRecord, User, APIToken, InvitationCode
+from models import Base, ModerationRecord, ConfigRecord, User, APIToken, InvitationCode, Admin
 
 
 # Database Setup
@@ -63,6 +63,16 @@ def load_config_from_database():
         ai_model_str = DatabaseOperations.get_config_value(db, "ai_model")
         if ai_model_str:
             Config.AI_MODEL = ai_model_str
+
+        # Load AI base URL from database
+        ai_base_url_str = DatabaseOperations.get_config_value(db, "ai_base_url")
+        if ai_base_url_str:
+            Config.AI_BASE_URL = ai_base_url_str
+
+        # Load AI API key from database
+        ai_api_key_str = DatabaseOperations.get_config_value(db, "ai_api_key")
+        if ai_api_key_str:
+            Config.AI_API_KEY = ai_api_key_str
 
     except Exception as e:
         print(f"Warning: Failed to load configuration from database: {e}")
@@ -403,3 +413,50 @@ class DatabaseOperations:
             "requests_this_month": requests_this_month,
             "tokens_count": tokens_count
         }
+
+    # Admin Management Operations
+    @staticmethod
+    def create_admin(db: Session, username: str, password_hash: str) -> Admin:
+        """Create a new admin."""
+        admin = Admin(
+            username=username,
+            password_hash=password_hash
+        )
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+        return admin
+
+    @staticmethod
+    def get_admin_by_username(db: Session, username: str) -> Optional[Admin]:
+        """Get admin by username."""
+        return db.query(Admin).filter(Admin.username == username, Admin.is_active == True).first()
+
+    @staticmethod
+    def update_admin_password(db: Session, username: str, new_password_hash: str) -> bool:
+        """Update admin password."""
+        admin = db.query(Admin).filter(Admin.username == username, Admin.is_active == True).first()
+        if admin:
+            admin.password_hash = new_password_hash  # type: ignore
+            admin.updated_at = datetime.now()  # type: ignore
+            db.commit()
+            return True
+        return False
+
+    @staticmethod
+    def admin_exists(db: Session) -> bool:
+        """Check if any admin exists in the database."""
+        return db.query(Admin).filter(Admin.is_active == True).count() > 0
+
+    # User Moderation History Operations
+    @staticmethod
+    def get_user_moderation_records(db: Session, user_id: str, limit: int = 100, offset: int = 0) -> List[ModerationRecord]:
+        """Get moderation records for a specific user."""
+        return db.query(ModerationRecord).filter(
+            ModerationRecord.user_id == user_id
+        ).order_by(ModerationRecord.created_at.desc()).offset(offset).limit(limit).all()
+
+    @staticmethod
+    def get_user_moderation_count(db: Session, user_id: str) -> int:
+        """Get total count of moderation records for a user."""
+        return db.query(ModerationRecord).filter(ModerationRecord.user_id == user_id).count()

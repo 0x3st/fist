@@ -19,6 +19,11 @@ class ModerationService:
         self.ai_connector = AIConnector(Config.AI_API_KEY, Config.AI_BASE_URL)
         self.ai_connector.set_model(Config.AI_MODEL)
 
+    def update_ai_config(self, api_key: str, base_url: str, model: str):
+        """Update AI configuration and reinitialize connector."""
+        self.ai_connector = AIConnector(api_key, base_url)
+        self.ai_connector.set_model(model)
+
     def pierce_content(
         self,
         text: str,

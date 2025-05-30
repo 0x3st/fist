@@ -103,31 +103,75 @@
 
     <!-- AI Model Configuration -->
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-12">
             <div class="card shadow mb-4">
                 <div class="card-header">
                     <h6 class="m-0 font-weight-bold text-primary">AI Model Settings</h6>
                 </div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label for="ai_model" class="form-label">AI Model</label>
-                        <select class="form-select" id="ai_model" name="ai_model" required>
-                            <option value="deepseek-chat" {% if config.ai_model == 'deepseek-chat' %}selected{% endif %}>
-                                DeepSeek Chat
-                            </option>
-                            <option value="deepseek-coder" {% if config.ai_model == 'deepseek-coder' %}selected{% endif %}>
-                                DeepSeek Coder
-                            </option>
-                        </select>
-                        <div class="form-text">
-                            Select the AI model to use for content moderation.
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="ai_base_url" class="form-label">AI API Base URL</label>
+                                <input type="url" class="form-control" id="ai_base_url" name="ai_base_url"
+                                       value="{{ config.ai_base_url }}" required>
+                                <div class="form-text">
+                                    Base URL for the AI API endpoint (e.g., https://api.deepseek.com)
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="ai_api_key" class="form-label">AI API Key</label>
+                                <input type="password" class="form-control" id="ai_api_key" name="ai_api_key"
+                                       value="{{ config.ai_api_key }}" required>
+                                <div class="form-text">
+                                    API key for authentication with the AI service
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="ai_model" class="form-label">AI Model</label>
+                                <select class="form-select" id="ai_model" name="ai_model" required>
+                                    <option value="deepseek-chat" {% if config.ai_model == 'deepseek-chat' %}selected{% endif %}>
+                                        DeepSeek Chat
+                                    </option>
+                                    <option value="deepseek-coder" {% if config.ai_model == 'deepseek-coder' %}selected{% endif %}>
+                                        DeepSeek Coder
+                                    </option>
+                                    <option value="gpt-3.5-turbo" {% if config.ai_model == 'gpt-3.5-turbo' %}selected{% endif %}>
+                                        GPT-3.5 Turbo
+                                    </option>
+                                    <option value="gpt-4" {% if config.ai_model == 'gpt-4' %}selected{% endif %}>
+                                        GPT-4
+                                    </option>
+                                </select>
+                                <div class="form-text">
+                                    Select the AI model to use for content moderation.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <strong>AI Configuration:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li>Current Model: {{ config.ai_model }}</li>
+                                    <li>API Endpoint: {{ config.ai_base_url }}</li>
+                                    <li>Key Status: {% if config.ai_api_key %}Configured{% else %}Not Set{% endif %}</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- User Management Configuration -->
+    <!-- User Management Configuration -->
+    <div class="row">
         <div class="col-md-6">
             <div class="card shadow mb-4">
                 <div class="card-header">
@@ -181,6 +225,8 @@ document.querySelector('form').addEventListener('submit', function(e) {
     const lowThreshold = parseInt(document.getElementById('low_threshold').value);
     const highThreshold = parseInt(document.getElementById('high_threshold').value);
     const maxUsers = parseInt(document.getElementById('max_users').value);
+    const aiBaseUrl = document.getElementById('ai_base_url').value.trim();
+    const aiApiKey = document.getElementById('ai_api_key').value.trim();
 
     // Validate percentage format
     const percentageArray = percentages.split(',').map(p => parseFloat(p.trim()));
@@ -209,6 +255,28 @@ document.querySelector('form').addEventListener('submit', function(e) {
     if (isNaN(maxUsers) || maxUsers < 1 || maxUsers > 10000) {
         e.preventDefault();
         alert('Maximum users must be a number between 1 and 10000');
+        return;
+    }
+
+    // Validate AI configuration
+    if (!aiBaseUrl) {
+        e.preventDefault();
+        alert('AI Base URL is required');
+        return;
+    }
+
+    if (!aiApiKey) {
+        e.preventDefault();
+        alert('AI API Key is required');
+        return;
+    }
+
+    // Validate URL format
+    try {
+        new URL(aiBaseUrl);
+    } catch (urlError) {
+        e.preventDefault();
+        alert('AI Base URL must be a valid URL');
         return;
     }
 });

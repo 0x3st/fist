@@ -1,0 +1,309 @@
+{% extends "user_base.html" %}
+
+{% block title %}FIST User Portal - History{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-clock-history"></i> Moderation History</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card card-stats border-left-primary h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Records
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_records }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-file-text text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stats border-left-success h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Current Page
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ current_page }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-file-earmark text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stats border-left-info h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Total Pages
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pages }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-files text-info" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stats border-left-warning h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Records/Page
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">20</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-grid text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Moderation Records -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-list"></i> Your Moderation Records
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if records %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Content</th>
+                                <th>Word Count</th>
+                                <th>Percentage Used</th>
+                                <th>AI Probability</th>
+                                <th>Final Decision</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                            <tr>
+                                <td>
+                                    <code>{{ record.id[:8] }}...</code>
+                                </td>
+                                <td>
+                                    <div class="content-preview">
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;" 
+                                              title="{{ record.original_content }}">
+                                            {{ record.original_content[:50] }}{% if record.original_content|length > 50 %}...{% endif %}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ record.word_count }}</span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-2">{{ "%.1f"|format(record.percentage_used * 100) }}%</span>
+                                        <div class="progress" style="width: 60px; height: 8px;">
+                                            <div class="progress-bar bg-info" 
+                                                 style="width: {{ record.percentage_used * 100 }}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-2">{{ record.inappropriate_probability }}%</span>
+                                        <div class="progress" style="width: 60px; height: 8px;">
+                                            <div class="progress-bar 
+                                                {% if record.inappropriate_probability <= 20 %}bg-success
+                                                {% elif record.inappropriate_probability <= 80 %}bg-warning
+                                                {% else %}bg-danger{% endif %}" 
+                                                style="width: {{ record.inappropriate_probability }}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if record.final_decision == 'A' %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Approved
+                                        </span>
+                                    {% elif record.final_decision == 'R' %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-x-circle"></i> Rejected
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Manual Review
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div>
+                                        <div>{{ record.created_at.strftime('%Y-%m-%d') }}</div>
+                                        <small class="text-muted">{{ record.created_at.strftime('%H:%M:%S') }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            onclick="showDetails('{{ record.id }}', '{{ record.original_content|replace("'", "\\'") }}', '{{ record.pierced_content|replace("'", "\\'") }}', '{{ record.ai_reason|replace("'", "\\'") }}', '{{ record.final_reason|replace("'", "\\'") }}')">
+                                        <i class="bi bi-eye"></i> Details
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if current_page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ current_page - 1 }}">
+                                <i class="bi bi-chevron-left"></i> Previous
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        {% for page_num in range(1, total_pages + 1) %}
+                            {% if page_num == current_page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% elif page_num <= 3 or page_num > total_pages - 3 or (page_num >= current_page - 1 and page_num <= current_page + 1) %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+                            </li>
+                            {% elif page_num == 4 or page_num == total_pages - 3 %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if current_page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ current_page + 1 }}">
+                                Next <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="text-muted mt-3">No moderation records found</h4>
+                    <p class="text-muted">Start using the API to see your moderation history here.</p>
+                    <a href="/user/tokens" class="btn btn-primary">
+                        <i class="bi bi-key"></i> Manage API Tokens
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-text"></i> Moderation Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Record ID:</strong></div>
+                    <div class="col-sm-9"><code id="modalRecordId"></code></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Original Content:</strong></div>
+                    <div class="col-sm-9">
+                        <div class="bg-light p-3 rounded">
+                            <pre id="modalOriginalContent" class="mb-0" style="white-space: pre-wrap;"></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Pierced Content:</strong></div>
+                    <div class="col-sm-9">
+                        <div class="bg-light p-3 rounded">
+                            <pre id="modalPiercedContent" class="mb-0" style="white-space: pre-wrap;"></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>AI Reason:</strong></div>
+                    <div class="col-sm-9">
+                        <div class="bg-info bg-opacity-10 p-3 rounded">
+                            <p id="modalAiReason" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-0">
+                    <div class="col-sm-3"><strong>Final Reason:</strong></div>
+                    <div class="col-sm-9">
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <p id="modalFinalReason" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showDetails(recordId, originalContent, piercedContent, aiReason, finalReason) {
+    document.getElementById('modalRecordId').textContent = recordId;
+    document.getElementById('modalOriginalContent').textContent = originalContent;
+    document.getElementById('modalPiercedContent').textContent = piercedContent;
+    document.getElementById('modalAiReason').textContent = aiReason;
+    document.getElementById('modalFinalReason').textContent = finalReason;
+    
+    new bootstrap.Modal(document.getElementById('detailsModal')).show();
+}
+</script>
+{% endblock %}
