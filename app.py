@@ -6,7 +6,7 @@ This is the main application file for the FIST system providing a FastAPI-based 
 The system provides:
 - Pure REST API endpoints for content moderation
 - AI model integration for content assessment
-- SQLite database for storing moderation results
+- PostgreSQL database for storing moderation results (with SQLite fallback for local development)
 - Intelligent content piercing based on length
 - Configurable decision thresholds
 - User and token management via API
@@ -17,6 +17,7 @@ Architecture:
 - Clear separation between AI assessment and business logic decisions
 - Simplified risk levels: LOW (≤20%) → APPROVED, MEDIUM (21-80%) → MANUAL_REVIEW, HIGH (>80%) → REJECTED
 - No web UI - pure API service for frontend integration
+- Vercel deployment ready with PostgreSQL support
 """
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -35,8 +36,13 @@ from admin_routes import router as admin_router
 async def lifespan(_app: FastAPI):
     """Lifespan event handler for startup and shutdown."""
     # Startup
-    create_tables()
-    load_config_from_database()
+    try:
+        create_tables()
+        load_config_from_database()
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        # For Vercel deployment, we might need to handle database connection issues gracefully
+        # The app will still start but database operations might fail
     yield
     # Shutdown (if needed)
 

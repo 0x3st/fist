@@ -1,6 +1,6 @@
 [project]
 name = "fist"
-version = "0.0.1"
+version = "1.0.0"
 description = "a fast, intuitive and sensitive test"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -9,8 +9,11 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "sqlalchemy",
+    "psycopg2-binary",  # PostgreSQL adapter
     "requests",
     "python-jose[cryptography]",
     "passlib[bcrypt]",
     "bcrypt==4.0.1",  # Pin bcrypt to 4.0.1 for compatibility with passlib 1.7.4
+    "python-multipart",  # Required for FastAPI
+    "jinja2",  # Required for FastAPI
 ]

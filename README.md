@@ -21,20 +21,58 @@ The F.I.S.T. stands for "Fast, Intuitive and Sensitive Test" - a philosophy for 
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Local Development
+
+#### 1. Install Dependencies
 ```bash
 uv sync
+# or
+pip install -r requirements.txt
 ```
 
-### 2. Start the API Server
+#### 2. Set up Environment Variables
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+#### 3. Start the API Server
 ```bash
 python app.py
 ```
 
-### 3. Access the API
+#### 4. Access the API
 - **API Documentation**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
-- **Health Check**: http://localhost:8000/api/health
+
+### Vercel Deployment
+
+#### 1. Prerequisites
+- Vercel account
+- PostgreSQL database (e.g., Vercel Postgres, Supabase, or any PostgreSQL provider)
+
+#### 2. Deploy to Vercel
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel --prod
+```
+
+#### 3. Configure Environment Variables in Vercel
+Set these environment variables in your Vercel dashboard:
+```bash
+DATABASE_URL=postgresql://username:password@hostname:port/database_name
+AI_API_KEY=your-deepseek-api-key
+AI_BASE_URL=https://api.deepseek.com
+AI_MODEL=deepseek-chat
+SECRET_KEY=your-secret-key-change-in-production
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-secure-admin-password
+MAX_USERS=100
+REQUIRE_INVITATION_CODE=true
+```
 
 ## API Endpoints
 
@@ -170,7 +208,6 @@ Content-Type: application/json
 ### Core Moderation Endpoints
 - `POST /api/moderate` - Submit content for moderation (requires API token)
 - `GET /api/results/{moderation_id}` - Get moderation result by ID
-- `GET /api/health` - Health check endpoint
 
 ### User Management Endpoints
 - `POST /api/user/register` - Register new user
@@ -220,6 +257,13 @@ The API provides all necessary endpoints for:
 Configure via environment variables:
 
 ```bash
+# Database Configuration
+# For local development (SQLite)
+export DATABASE_URL="sqlite:///./fist.db"
+
+# For production (PostgreSQL)
+export DATABASE_URL="postgresql://username:password@hostname:port/database_name"
+
 # AI Configuration
 export AI_API_KEY="your-deepseek-api-key"
 export AI_BASE_URL="https://api.deepseek.com"
@@ -238,6 +282,35 @@ export MAX_USERS="100"                          # Maximum number of users allowe
 export REQUIRE_INVITATION_CODE="True"           # Whether registration requires invitation codes
 export USER_TOKEN_EXPIRE_MINUTES="60"           # User session token expiry (minutes)
 export API_TOKEN_PREFIX="fist_"                 # Prefix for API tokens
+```
+
+### Database Support
+
+The application supports both SQLite (for local development) and PostgreSQL (for production deployment):
+
+- **SQLite**: Automatically used when `DATABASE_URL` starts with `sqlite://`
+- **PostgreSQL**: Used for production deployments on Vercel and other cloud platforms
+
+#### PostgreSQL Setup
+
+For production deployment, you'll need a PostgreSQL database. Popular options include:
+
+1. **Vercel Postgres**: Integrated with Vercel deployments
+2. **Supabase**: Free tier available with PostgreSQL
+3. **Railway**: Simple PostgreSQL hosting
+4. **AWS RDS**: Enterprise-grade PostgreSQL
+5. **Google Cloud SQL**: Managed PostgreSQL service
+
+Example PostgreSQL connection strings:
+```bash
+# Vercel Postgres
+DATABASE_URL="postgresql://username:password@hostname.vercel-storage.com:5432/database_name"
+
+# Supabase
+DATABASE_URL="postgresql://postgres:password@db.project.supabase.co:5432/postgres"
+
+# Railway
+DATABASE_URL="postgresql://postgres:password@containers-us-west-1.railway.app:5432/railway"
 ```
 
 ## User Authentication & Management
@@ -402,9 +475,6 @@ Test the API functionality:
 
 ### Manual Testing
 ```bash
-# Test health endpoint
-curl http://localhost:8000/api/health
-
 # Test API documentation
 open http://localhost:8000/docs
 
@@ -421,7 +491,6 @@ curl -X POST http://localhost:8000/api/user/login \
 
 ### Expected Results
 ```
-✅ Health check: {"status": "healthy", ...}
 ✅ User registration: {"user_id": "...", "username": "testuser", ...}
 ✅ User login: {"access_token": "...", "user": {...}}
 ✅ API documentation: Available at /docs

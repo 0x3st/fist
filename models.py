@@ -50,16 +50,6 @@ class ModerationResponse(BaseModel):
     result: Optional[ModerationResult] = Field(None, description="Moderation result if completed")
 
 
-class HealthResponse(BaseModel):
-    """Health check response model."""
-    status: str = Field(..., description="Service status")
-    timestamp: datetime = Field(..., description="Current timestamp")
-    version: str = Field(..., description="API version")
-
-
-# Statistics removed for privacy protection
-
-
 class ErrorResponse(BaseModel):
     """Error response model."""
     error: str = Field(..., description="Error message")
@@ -116,7 +106,6 @@ class UsageStatsResponse(BaseModel):
     """Response model for user usage statistics - privacy focused."""
     user_id: str = Field(..., description="User UUID")
     tokens_count: int = Field(..., description="Number of active tokens")
-    # Individual token usage is shown in TokenResponse.usage_count
 
 
 class InvitationCodeResponse(BaseModel):
@@ -231,8 +220,6 @@ class ModerationRecord(Base):
     inappropriate_probability = Column(Integer, nullable=False)
     final_decision = Column(String(1), nullable=False)  # A, R, M
     created_at = Column(DateTime, default=datetime.now)
-
-    # No user relationship for privacy - tokens handle their own usage tracking
 
 
 class Admin(Base):

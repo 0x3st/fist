@@ -12,7 +12,7 @@ class Config:
     """Configuration class for FIST system."""
 
     # Database Configuration
-    DATABASE_URL = "sqlite:///./fist.db"
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fist.db")
 
     # AI Configuration
     AI_API_KEY = os.getenv("AI_API_KEY", "sk-488d88049a9440a591bb948fa8fea5ca")

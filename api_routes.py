@@ -1,16 +1,13 @@
 """
 API routes for FIST Content Moderation System.
 
-This module contains all REST API endpoints for content moderation,
-health checks, and statistics.
+This module contains all REST API endpoints for content moderation.
 """
-from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, status, Header
 from sqlalchemy.orm import Session
 
 from models import (
-    ModerationRequest, ModerationResponse, ModerationResult, AIResult,
-    HealthResponse
+    ModerationRequest, ModerationResponse, ModerationResult, AIResult
 )
 from database import get_db, DatabaseOperations
 from services import ModerationService
@@ -23,22 +20,11 @@ router = APIRouter(prefix="/api")
 moderation_service = ModerationService()
 
 
-@router.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Health check endpoint."""
-    return HealthResponse(
-        status="healthy",
-        timestamp=datetime.now(),
-        version="0.1.0"
-    )
-
-
 async def get_authenticated_user(
     authorization: str = Header(None),
     db: Session = Depends(get_db)
 ) -> str:
     """Get authenticated user from API token."""
-    # Create a new dependency that properly injects the database
     return require_api_auth(authorization, db)
 
 
@@ -76,7 +62,7 @@ async def moderate_content(
             final_decision=result["final_decision"]
         )
 
-        # Prepare response (return actual content to user, but don't store it)
+        # Prepare response
         moderation_result = ModerationResult(
             moderation_id=record.id,  # type: ignore
             content_hash=record.content_hash,  # type: ignore
@@ -123,14 +109,11 @@ async def get_moderation_result(
         content_hash=record.content_hash,  # type: ignore
         ai_result=AIResult(
             inappropriate_probability=record.inappropriate_probability,  # type: ignore
-            reason="AI analysis completed"  # Generic reason for privacy
+            reason="AI analysis completed"
         ),
         final_decision=record.final_decision,  # type: ignore
-        reason="Decision based on AI analysis",  # Generic reason for privacy
+        reason="Decision based on AI analysis",
         created_at=record.created_at,  # type: ignore
         word_count=record.word_count,  # type: ignore
         percentage_used=record.percentage_used  # type: ignore
     )
-
-
-# Admin endpoints removed for privacy protection

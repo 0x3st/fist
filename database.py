@@ -16,7 +16,12 @@ from models import Base, ModerationRecord, ConfigRecord, User, APIToken, Invitat
 
 
 # Database Setup
-engine = create_engine(Config.DATABASE_URL, connect_args={"check_same_thread": False})
+# Only use connect_args for SQLite
+connect_args = {}
+if Config.DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
+engine = create_engine(Config.DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -114,8 +119,6 @@ class DatabaseOperations:
     def get_moderation_record(db: Session, moderation_id: str) -> Optional[ModerationRecord]:
         """Get a moderation record by ID."""
         return db.query(ModerationRecord).filter(ModerationRecord.id == moderation_id).first()
-
-    # Statistics and records listing removed for privacy protection
 
     @staticmethod
     def get_config_value(db: Session, config_key: str) -> Optional[str]:
@@ -348,7 +351,6 @@ class DatabaseOperations:
             return True
         return False
 
-    # Usage Statistics - privacy focused
     @staticmethod
     def get_user_usage_stats(db: Session, user_id: str) -> Dict[str, Any]:
         """Get usage statistics for a user - privacy focused."""
