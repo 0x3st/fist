@@ -16,4 +16,5 @@ dependencies = [
     "bcrypt==4.0.1",  # Pin bcrypt to 4.0.1 for compatibility with passlib 1.7.4
     "python-multipart",  # Required for FastAPI
     "jinja2",  # Required for FastAPI
+    "mistune",  # Markdown to HTML converter
 ]

@@ -60,51 +60,41 @@ app = FastAPI(
 
 
 def markdown_to_html(markdown_text: str) -> str:
-    """Convert markdown to HTML with basic formatting."""
-    import re
+    """Convert markdown to HTML using mistune library."""
+    try:
+        import mistune
 
-    html = markdown_text
+        # Create markdown parser with GitHub-flavored markdown features
+        markdown = mistune.create_markdown(
+            escape=False,  # Don't escape HTML
+            plugins=['strikethrough', 'footnotes', 'table']
+        )
 
-    # Code blocks
-    html = re.sub(r'```(\w+)?\n(.*?)\n```', r'<pre><code class="\1">\2</code></pre>', html, flags=re.DOTALL)
-    html = re.sub(r'```\n(.*?)\n```', r'<pre><code>\1</code></pre>', html, flags=re.DOTALL)
+        return markdown(markdown_text)
+    except ImportError:
+        # Fallback to basic conversion if mistune is not available
+        import re
+        html = markdown_text
 
-    # Headers
-    html = re.sub(r'^### (.*$)', r'<h3>\1</h3>', html, flags=re.MULTILINE)
-    html = re.sub(r'^## (.*$)', r'<h2>\1</h2>', html, flags=re.MULTILINE)
-    html = re.sub(r'^# (.*$)', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+        # Basic markdown conversion as fallback
+        html = re.sub(r'```(\w+)?\n(.*?)\n```', r'<pre><code class="\1">\2</code></pre>', html, flags=re.DOTALL)
+        html = re.sub(r'^### (.*$)', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+        html = re.sub(r'^## (.*$)', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+        html = re.sub(r'^# (.*$)', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+        html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
+        html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
+        html = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank">\1</a>', html)
+        html = re.sub(r'^- (.*$)', r'<li>\1</li>', html, flags=re.MULTILINE)
+        html = re.sub(r'(<li>.*</li>)', r'<ul>\1</ul>', html, flags=re.DOTALL)
+        html = html.replace('\n\n', '</p><p>')
+        html = html.replace('\n', '<br>')
+        html = f'<p>{html}</p>'
 
-    # Bold and italic
-    html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
-    html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
-
-    # Links
-    html = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank">\1</a>', html)
-
-    # Lists
-    html = re.sub(r'^- (.*$)', r'<li>\1</li>', html, flags=re.MULTILINE)
-    html = re.sub(r'(<li>.*</li>)', r'<ul>\1</ul>', html, flags=re.DOTALL)
-    html = re.sub(r'</ul>\s*<ul>', '', html)
-
-    # Line breaks
-    html = html.replace('\n\n', '</p><p>')
-    html = html.replace('\n', '<br>')
-    html = f'<p>{html}</p>'
-
-    # Clean up empty paragraphs
-    html = re.sub(r'<p>\s*</p>', '', html)
-    html = re.sub(r'<p>(<h[1-6]>)', r'\1', html)
-    html = re.sub(r'(</h[1-6]>)</p>', r'\1', html)
-    html = re.sub(r'<p>(<ul>)', r'\1', html)
-    html = re.sub(r'(</ul>)</p>', r'\1', html)
-    html = re.sub(r'<p>(<pre>)', r'\1', html)
-    html = re.sub(r'(</pre>)</p>', r'\1', html)
-
-    return html
+        return html
 
 
 def read_readme() -> str:
-    """Read README.md file and convert to HTML."""
+    """Read README.md file and convert to HTML like GitHub."""
     try:
         readme_path = os.path.join(os.path.dirname(__file__), "README.md")
         with open(readme_path, "r", encoding="utf-8") as f:
@@ -113,200 +103,176 @@ def read_readme() -> str:
         # Convert markdown to HTML
         html_content = markdown_to_html(content)
 
-        return f"""
-<!DOCTYPE html>
-<html lang="zh-CN">
+        return f"""<!DOCTYPE html>
+<html>
 <head>
+    <title>FIST Content Moderation API</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FIST Content Moderation System</title>
     <style>
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f8f9fa;
-            color: #333;
-        }}
-        .container {{
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }}
-        .status-banner {{
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
-        }}
-        .status-banner h2 {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            color: #1f2328;
+            background-color: #ffffff;
             margin: 0;
-            font-size: 1.5rem;
-        }}
-        .quick-nav {{
-            display: flex;
-            gap: 15px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }}
-        .nav-btn {{
-            display: inline-flex;
-            align-items: center;
-            padding: 12px 20px;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-        }}
-        .nav-btn:hover {{
-            background: #0056b3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
-            text-decoration: none;
-            color: white;
-        }}
-        .nav-btn .icon {{
-            margin-right: 8px;
-            font-size: 1.1em;
-        }}
-        .readme-content {{
-            border-top: 2px solid #e9ecef;
-            padding-top: 30px;
+            padding: 16px;
+            max-width: 1012px;
+            margin: 0 auto;
         }}
         h1 {{
-            color: #2c3e50;
-            border-bottom: 3px solid #007bff;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+            font-size: 2em;
+            font-weight: 600;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid #d1d9e0;
+            margin-bottom: 16px;
         }}
         h2 {{
-            color: #495057;
-            border-bottom: 1px solid #dee2e6;
-            padding-bottom: 8px;
-            margin-top: 30px;
-            margin-bottom: 15px;
+            font-size: 1.5em;
+            font-weight: 600;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid #d1d9e0;
+            margin-top: 24px;
+            margin-bottom: 16px;
         }}
         h3 {{
-            color: #6c757d;
-            margin-top: 25px;
-            margin-bottom: 12px;
+            font-size: 1.25em;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 16px;
+        }}
+        h4 {{
+            font-size: 1em;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 16px;
+        }}
+        p {{
+            margin-top: 0;
+            margin-bottom: 16px;
         }}
         pre {{
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            padding: 16px;
+            background-color: #f6f8fa;
             border-radius: 6px;
-            overflow-x: auto;
-            border-left: 4px solid #007bff;
-            margin: 15px 0;
+            font-size: 85%;
+            line-height: 1.45;
+            overflow: auto;
+            padding: 16px;
+            margin-bottom: 16px;
         }}
         code {{
-            background: #f8f9fa;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'SFMono-Regular', 'Monaco', 'Consolas', monospace;
-            font-size: 0.9em;
-            border: 1px solid #e9ecef;
+            background-color: rgba(175,184,193,0.2);
+            border-radius: 6px;
+            font-size: 85%;
+            margin: 0;
+            padding: 0.2em 0.4em;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
         }}
         pre code {{
-            background: none;
+            background-color: transparent;
+            border: 0;
+            display: inline;
+            line-height: inherit;
+            margin: 0;
+            overflow: visible;
             padding: 0;
-            border: none;
+            word-wrap: normal;
         }}
-        ul {{
-            padding-left: 20px;
+        ul, ol {{
+            margin-top: 0;
+            margin-bottom: 16px;
+            padding-left: 2em;
         }}
         li {{
-            margin-bottom: 5px;
+            margin-top: 0.25em;
         }}
         a {{
-            color: #007bff;
+            color: #0969da;
             text-decoration: none;
         }}
         a:hover {{
-            color: #0056b3;
             text-decoration: underline;
         }}
-        .footer {{
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-            text-align: center;
-            color: #6c757d;
-            font-size: 0.9em;
+        strong {{
+            font-weight: 600;
         }}
-        @media (max-width: 768px) {{
-            body {{ padding: 10px; }}
-            .container {{ padding: 20px; }}
-            .quick-nav {{ flex-direction: column; }}
-            .nav-btn {{ justify-content: center; }}
+        em {{
+            font-style: italic;
+        }}
+        blockquote {{
+            margin: 0;
+            padding: 0 1em;
+            color: #656d76;
+            border-left: 0.25em solid #d1d9e0;
+        }}
+        table {{
+            border-spacing: 0;
+            border-collapse: collapse;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }}
+        table th, table td {{
+            padding: 6px 13px;
+            border: 1px solid #d1d9e0;
+        }}
+        table th {{
+            font-weight: 600;
+            background-color: #f6f8fa;
+        }}
+        hr {{
+            height: 0.25em;
+            padding: 0;
+            margin: 24px 0;
+            background-color: #d1d9e0;
+            border: 0;
         }}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="status-banner">
-            <h2>🛡️ FIST Content Moderation System</h2>
-            <p style="margin: 5px 0 0 0; opacity: 0.9;">系统运行正常 | Fast, Intuitive and Sensitive Test</p>
-        </div>
-
-        <div class="quick-nav">
-            <a href="/docs" class="nav-btn" target="_blank">
-                <span class="icon">📚</span>
-                API 文档 (Swagger)
-            </a>
-            <a href="/redoc" class="nav-btn" target="_blank">
-                <span class="icon">📖</span>
-                API 文档 (ReDoc)
-            </a>
-        </div>
-
-        <div class="readme-content">
-            {html_content}
-        </div>
-
-        <div class="footer">
-            <p>© 2024 FIST Content Moderation System | 基于 FastAPI 构建</p>
-        </div>
-    </div>
+    {html_content}
 </body>
 </html>"""
     except Exception as e:
-        return f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>FIST Content Moderation System</title>
-            <meta charset="utf-8">
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 40px; }}
-                .error {{ background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 5px; }}
-                .links {{ margin: 20px 0; }}
-                .links a {{ margin-right: 20px; }}
-            </style>
-        </head>
-        <body>
-            <h1>FIST Content Moderation System</h1>
-            <div class="error">
-                ⚠️ Could not load README.md: {str(e)}
-            </div>
-            <div class="links">
-                <a href="/docs">📚 API Documentation</a>
-                <a href="/redoc">📖 ReDoc</a>
-            </div>
-            <p>The FIST Content Moderation System is running successfully!</p>
-        </body>
-        </html>
-        """
+        return f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>FIST Content Moderation API</title>
+    <meta charset="utf-8">
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 40px;
+            color: #1f2328;
+        }}
+        .error {{
+            background: #fff8f0;
+            border: 1px solid #d1242f;
+            color: #d1242f;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }}
+        .links {{ margin: 20px 0; }}
+        .links a {{
+            color: #0969da;
+            text-decoration: none;
+            margin-right: 20px;
+        }}
+        .links a:hover {{ text-decoration: underline; }}
+    </style>
+</head>
+<body>
+    <h1>FIST Content Moderation API</h1>
+    <div class="error">
+        ⚠️ Could not load README.md: {str(e)}
+    </div>
+    <div class="links">
+        <a href="/docs">📚 API Documentation</a>
+        <a href="/redoc">📖 ReDoc</a>
+    </div>
+    <p>The FIST Content Moderation System is running successfully!</p>
+</body>
+</html>"""
 
 
 @app.get("/", response_class=HTMLResponse)
