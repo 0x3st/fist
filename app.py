@@ -96,9 +96,22 @@ def markdown_to_html(markdown_text: str) -> str:
 def read_readme() -> str:
     """Read README.md file and convert to HTML like GitHub."""
     try:
-        readme_path = os.path.join(os.path.dirname(__file__), "README.md")
-        with open(readme_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        # Try multiple possible paths for README.md
+        possible_paths = [
+            os.path.join(os.path.dirname(__file__), "README.md"),  # Same directory as app.py
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md"),  # Parent directory (for Vercel)
+            "README.md",  # Current working directory
+        ]
+
+        content = None
+        for readme_path in possible_paths:
+            if os.path.exists(readme_path):
+                with open(readme_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                break
+
+        if content is None:
+            raise FileNotFoundError("README.md not found in any expected location")
 
         # Convert markdown to HTML
         html_content = markdown_to_html(content)
