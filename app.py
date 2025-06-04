@@ -24,6 +24,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+import time
 
 from config import Config
 from models import ErrorResponse
@@ -31,6 +33,7 @@ from database import create_tables, load_config_from_database
 from api_routes import router as api_router
 from user_routes import router as user_router
 from admin_routes import router as admin_router
+from monitoring import metrics_collector
 
 # Lifespan event handler
 @asynccontextmanager
@@ -57,6 +60,42 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+# Add CORS middleware for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Performance monitoring middleware
+@app.middleware("http")
+async def performance_monitoring_middleware(request: Request, call_next):
+    """Middleware to monitor API performance and collect metrics."""
+    start_time = time.time()
+
+    # Process request
+    response = await call_next(request)
+
+    # Calculate processing time
+    process_time = time.time() - start_time
+
+    # Record metrics
+    if hasattr(metrics_collector, 'record_request'):
+        metrics_collector.record_request(
+            endpoint=request.url.path,
+            method=request.method,
+            status_code=response.status_code,
+            duration=process_time
+        )
+
+    # Add performance headers
+    response.headers["X-Process-Time"] = str(process_time)
+
+    return response
 
 
 def markdown_to_html(markdown_text: str) -> str:

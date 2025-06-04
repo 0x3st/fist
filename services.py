@@ -9,6 +9,8 @@ from typing import List, Optional, Dict, Any
 
 from ai_connector import AIConnector
 from config import Config
+from cache import cache_manager
+from monitoring import metrics_collector
 
 
 class ModerationService:
@@ -102,7 +104,21 @@ class ModerationService:
         thresholds: Optional[List[int]] = None,
         probability_thresholds: Optional[Dict[str, int]] = None
     ) -> Dict[str, Any]:
-        """Perform complete content moderation."""
+        """Perform complete content moderation with caching support."""
+        # Check cache first
+        cached_result = cache_manager.get_cached_result(
+            content, percentages, thresholds, probability_thresholds
+        )
+
+        if cached_result:
+            metrics_collector.record_cache_operation("get", "hit")
+            # Return cached result with original content for consistency
+            cached_result["original_content"] = content
+            return cached_result
+
+        metrics_collector.record_cache_operation("get", "miss")
+
+        # Process content normally
         words = content.split()
         if len(words) == 1 and len(content.strip()) > 10:
             words = list(content.strip())
@@ -112,7 +128,7 @@ class ModerationService:
         ai_result = self.check_content_with_ai(pierced_content)
         analysis = self.analyze_result(ai_result, probability_thresholds)
 
-        return {
+        result = {
             "original_content": content,
             "pierced_content": pierced_content,
             "word_count": word_count,
@@ -121,3 +137,13 @@ class ModerationService:
             "final_decision": analysis["final_decision"],
             "reason": analysis["reason"]
         }
+
+        # Cache the result
+        cache_manager.cache_result(
+            content, result, percentages, thresholds, probability_thresholds
+        )
+
+        # Record AI call metrics
+        metrics_collector.record_ai_call("success")
+
+        return result

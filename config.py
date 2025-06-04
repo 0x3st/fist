@@ -41,3 +41,20 @@ class Config:
     REQUIRE_INVITATION_CODE = os.getenv("REQUIRE_INVITATION_CODE", "True").lower() == "true"
     USER_TOKEN_EXPIRE_MINUTES = int(os.getenv("USER_TOKEN_EXPIRE_MINUTES", "60"))  # User session token expiry
     API_TOKEN_PREFIX = "fist_"  # Prefix for API tokens
+
+    # Redis Cache Configuration
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # Cache TTL in seconds (1 hour)
+    ENABLE_CACHE = os.getenv("ENABLE_CACHE", "True").lower() == "true"
+
+    # Celery Configuration
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
+
+    # Monitoring Configuration
+    ENABLE_METRICS = os.getenv("ENABLE_METRICS", "True").lower() == "true"
+    METRICS_PORT = int(os.getenv("METRICS_PORT", "8001"))
+
+    # Batch Processing Configuration
+    MAX_BATCH_SIZE = int(os.getenv("MAX_BATCH_SIZE", "100"))
+    BATCH_TIMEOUT = int(os.getenv("BATCH_TIMEOUT", "300"))  # 5 minutes

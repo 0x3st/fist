@@ -17,4 +17,8 @@ dependencies = [
     "python-multipart",  # Required for FastAPI
     "jinja2",  # Required for FastAPI
     "mistune",  # Markdown to HTML converter
+    "redis",  # Redis for caching
+    "celery",  # Background task processing
+    "prometheus-client",  # Metrics collection
+    "psutil",  # System monitoring
 ]

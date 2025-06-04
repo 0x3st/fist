@@ -6,7 +6,7 @@ and SQLAlchemy models for database tables.
 """
 import uuid
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
@@ -161,6 +161,72 @@ class AdminPasswordUpdateRequest(BaseModel):
     """Request model for updating admin password."""
     current_password: str = Field(..., description="Current password")
     new_password: str = Field(..., description="New password", min_length=6)
+
+
+# Batch Processing Models
+class BatchModerationRequest(BaseModel):
+    """Request model for batch content moderation."""
+    contents: List[str] = Field(..., description="List of content to be moderated", min_length=1, max_length=100)
+    percentages: Optional[List[float]] = Field(None, description="Custom percentages for content piercing")
+    thresholds: Optional[List[int]] = Field(None, description="Custom word count thresholds")
+    probability_thresholds: Optional[Dict[str, int]] = Field(None, description="Custom probability thresholds for decision making")
+    background: bool = Field(False, description="Process in background (for large batches)")
+
+
+class BatchModerationResponse(BaseModel):
+    """Response model for batch content moderation."""
+    job_id: str = Field(..., description="Unique identifier for the batch job")
+    status: str = Field(..., description="Job status: pending, processing, completed, failed")
+    total_items: int = Field(..., description="Total number of items in the batch")
+    processed_items: int = Field(0, description="Number of items processed so far")
+    progress_percent: float = Field(0.0, description="Processing progress percentage")
+    results: Optional[List[ModerationResult]] = Field(None, description="Moderation results (if completed)")
+    errors: Optional[List[Dict[str, Any]]] = Field(None, description="Processing errors")
+    created_at: datetime = Field(..., description="When the job was created")
+    started_at: Optional[datetime] = Field(None, description="When processing started")
+    completed_at: Optional[datetime] = Field(None, description="When processing completed")
+    background_task_id: Optional[str] = Field(None, description="Background task ID (if processed in background)")
+
+
+class BatchJobStatusResponse(BaseModel):
+    """Response model for batch job status."""
+    job_id: str = Field(..., description="Unique identifier for the batch job")
+    status: str = Field(..., description="Job status")
+    total_items: int = Field(..., description="Total number of items")
+    processed_items: int = Field(..., description="Number of items processed")
+    progress_percent: float = Field(..., description="Processing progress percentage")
+    elapsed_time_seconds: Optional[float] = Field(None, description="Elapsed processing time")
+    estimated_remaining_seconds: Optional[float] = Field(None, description="Estimated remaining time")
+    errors_count: int = Field(0, description="Number of errors encountered")
+
+
+# Monitoring and Health Check Models
+class HealthCheckResponse(BaseModel):
+    """Response model for health check."""
+    status: str = Field(..., description="Overall health status: healthy, warning, unhealthy")
+    timestamp: str = Field(..., description="Health check timestamp")
+    checks: Dict[str, Any] = Field(..., description="Individual component health checks")
+
+
+class MetricsResponse(BaseModel):
+    """Response model for system metrics."""
+    enabled: bool = Field(..., description="Whether metrics collection is enabled")
+    uptime_seconds: Optional[int] = Field(None, description="System uptime in seconds")
+    requests: Optional[Dict[str, Any]] = Field(None, description="Request metrics")
+    performance: Optional[Dict[str, Any]] = Field(None, description="Performance metrics")
+    system: Optional[Dict[str, Any]] = Field(None, description="System resource metrics")
+    cache: Optional[Dict[str, Any]] = Field(None, description="Cache performance metrics")
+
+
+class CacheStatsResponse(BaseModel):
+    """Response model for cache statistics."""
+    enabled: bool = Field(..., description="Whether cache is enabled")
+    connected: Optional[bool] = Field(None, description="Whether cache is connected")
+    keys_count: Optional[int] = Field(None, description="Number of cached keys")
+    memory_used: Optional[str] = Field(None, description="Memory used by cache")
+    hits: Optional[int] = Field(None, description="Cache hits")
+    misses: Optional[int] = Field(None, description="Cache misses")
+    hit_rate: Optional[float] = Field(None, description="Cache hit rate percentage")
 
 
 # SQLAlchemy Database Models
