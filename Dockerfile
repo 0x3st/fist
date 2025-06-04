@@ -20,9 +20,6 @@ RUN apt-get update \
 # Copy project files
 COPY . .
 
-# Replace pyproject.toml with fixed version
-RUN mv pyproject.toml.fixed pyproject.toml
-
 # Install dependencies
 RUN pip install --no-cache-dir -e .
 
