@@ -520,6 +520,7 @@ docker-compose exec fist-api bash
 - [API 文档](http://localhost:8000/docs) - 交互式API文档 (启动后访问)
 - [ReDoc 文档](http://localhost:8000/redoc) - 详细的API文档
 - [Docker 部署文档](docs/DEPLOYMENT.md) - 完整的Docker部署指南
+- [故障排除指南](DOCKER_TROUBLESHOOTING.md) - Docker部署问题解决方案
 
 ### 🆘 **技术支持**
 - Docker 容器日志和监控
