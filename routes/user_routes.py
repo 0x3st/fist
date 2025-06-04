@@ -13,6 +13,7 @@ from core.models import (
     UserCreateRequest, UserResponse, UserLoginRequest, UserLoginResponse,
     TokenCreateRequest, TokenResponse, UsageStatsResponse
 )
+from core.type_adapters import convert_user, convert_token, convert_tokens_list
 from core.database import get_db, DatabaseOperations
 from core.auth import (
     get_password_hash, verify_password, create_user_access_token,
@@ -70,12 +71,7 @@ async def register_user(
     if Config.REQUIRE_INVITATION_CODE and request.invitation_code:
         DatabaseOperations.use_invitation_code(db, request.invitation_code)
 
-    return UserResponse(
-        user_id=user.user_id,  # type: ignore
-        username=user.username,  # type: ignore
-        created_at=user.created_at,  # type: ignore
-        is_active=user.is_active  # type: ignore
-    )
+    return convert_user(user)
 
 
 @router.post("/login", response_model=UserLoginResponse)
@@ -113,12 +109,7 @@ async def login_user(
 
     return UserLoginResponse(
         access_token=access_token,
-        user=UserResponse(
-            user_id=user.user_id,  # type: ignore
-            username=user.username,  # type: ignore
-            created_at=user.created_at,  # type: ignore
-            is_active=user.is_active  # type: ignore
-        )
+        user=convert_user(user)
     )
 
 
@@ -163,15 +154,7 @@ async def create_token(
         token_hash=token_hash
     )
 
-    return TokenResponse(
-        token_id=api_token.token_id,  # type: ignore
-        name=api_token.name,  # type: ignore
-        token=token,  # Only shown on creation
-        created_at=api_token.created_at,  # type: ignore
-        last_used=api_token.last_used,  # type: ignore
-        usage_count=api_token.usage_count or 0,  # type: ignore
-        is_active=api_token.is_active  # type: ignore
-    )
+    return convert_token(api_token, include_token=True, token_value=token)
 
 
 @router.get("/tokens", response_model=List[TokenResponse])
@@ -183,18 +166,7 @@ async def list_tokens(
 
     tokens = DatabaseOperations.get_user_tokens(db, user_id)
 
-    return [
-        TokenResponse(
-            token_id=token.token_id,  # type: ignore
-            name=token.name,  # type: ignore
-            token=None,  # Never show token value in list
-            created_at=token.created_at,  # type: ignore
-            last_used=token.last_used,  # type: ignore
-            usage_count=token.usage_count or 0,  # type: ignore
-            is_active=token.is_active  # type: ignore
-        )
-        for token in tokens
-    ]
+    return convert_tokens_list(tokens)
 
 
 @router.delete("/tokens/{token_id}")

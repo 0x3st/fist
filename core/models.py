@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text, Boolean, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, DateTime, Text, Boolean, ForeignKey, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -283,7 +283,7 @@ class User(Base):
     user_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String(50), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=func.now())
     is_active = Column(Boolean, default=True)
 
     # Relationships
@@ -298,7 +298,7 @@ class APIToken(Base):
     user_id = Column(String, ForeignKey("users.user_id"), nullable=False)
     name = Column(String(100), nullable=False)
     token_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=func.now())
     last_used = Column(DateTime, nullable=True)
     usage_count = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
@@ -312,7 +312,7 @@ class InvitationCode(Base):
     __tablename__ = "invitation_codes"
 
     code = Column(String(50), primary_key=True)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=func.now())
     expires_at = Column(DateTime, nullable=True)
     max_uses = Column(Integer, nullable=True)
     current_uses = Column(Integer, default=0)
@@ -328,10 +328,10 @@ class ModerationRecord(Base):
     # Store only hash of content for verification, not actual content
     content_hash = Column(String(64), nullable=False)  # SHA-256 hash
     word_count = Column(Integer, nullable=False)
-    percentage_used = Column(Float, nullable=False)  # type: ignore
+    percentage_used = Column(Float, nullable=False)
     inappropriate_probability = Column(Integer, nullable=False)
     final_decision = Column(String(1), nullable=False)  # A, R, M
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=func.now())
 
 
 class Admin(Base):
@@ -341,8 +341,8 @@ class Admin(Base):
     admin_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String(50), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
 
 
@@ -353,7 +353,7 @@ class ConfigRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     config_key = Column(String(100), nullable=False, unique=True)
     config_value = Column(Text, nullable=False)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     updated_by = Column(String(100), nullable=False)
 
 
@@ -367,7 +367,7 @@ class SentimentRecord(Base):
     sentiment_confidence = Column(Float, nullable=False)
     sentiment_label = Column(String(20), nullable=False)
     backend_used = Column(String(50), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=func.now())
 
 
 class TopicRecord(Base):
@@ -382,7 +382,7 @@ class TopicRecord(Base):
     categories = Column(Text, nullable=True)  # JSON string of categories
     content_type = Column(String(50), nullable=False)
     detected_language = Column(String(10), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=func.now())
 
 
 class TextQualityRecord(Base):
@@ -397,4 +397,4 @@ class TextQualityRecord(Base):
     spam_probability = Column(Float, nullable=False)
     spelling_errors = Column(Integer, nullable=False)
     analysis_confidence = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=func.now())

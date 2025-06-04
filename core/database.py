@@ -20,21 +20,70 @@ from .models import Base, ModerationRecord, ConfigRecord, User, APIToken, Invita
 connect_args = {}
 if Config.DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
+elif Config.DATABASE_URL.startswith("postgresql"):
+    # PostgreSQL specific connection settings
+    connect_args = {
+        "connect_timeout": 10,
+        "application_name": "fist_api"
+    }
 
-engine = create_engine(Config.DATABASE_URL, connect_args=connect_args)
+# Create engine with better error handling and connection pooling
+engine = create_engine(
+    Config.DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True,  # Verify connections before use
+    pool_recycle=3600,   # Recycle connections every hour
+    echo=False           # Set to True for SQL debugging
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def create_tables():
-    """Create all database tables."""
-    Base.metadata.create_all(bind=engine)
+    """Create all database tables with error handling."""
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"Error creating database tables: {e}")
+        # For PostgreSQL connection issues, provide helpful error message
+        if "password authentication failed" in str(e):
+            print("Database connection failed: Please check PostgreSQL credentials")
+            print("Expected: DATABASE_URL=postgresql://postgres:fist_password@db:5432/fist_db")
+        raise
 
 
 def get_db():
-    """Get database session."""
+    """Get database session with error handling."""
+    from sqlalchemy import text
     db = SessionLocal()
     try:
+        # Test the connection
+        db.execute(text("SELECT 1"))
         yield db
+    except Exception as e:
+        db.rollback()
+        print(f"Database session error: {e}")
+        raise
+    finally:
+        db.close()
+
+
+def initialize_admin_user():
+    """Initialize default admin user if none exists."""
+    import hashlib
+
+    db = SessionLocal()
+    try:
+        # Check if any admin exists
+        if not DatabaseOperations.admin_exists(db):
+            # Create default admin user
+            password_hash = hashlib.sha256(Config.ADMIN_PASSWORD.encode()).hexdigest()
+            DatabaseOperations.create_admin(db, Config.ADMIN_USERNAME, password_hash)
+            print(f"Created default admin user: {Config.ADMIN_USERNAME}")
+        else:
+            print("Admin user already exists")
+    except Exception as e:
+        print(f"Error initializing admin user: {e}")
     finally:
         db.close()
 
@@ -131,9 +180,9 @@ class DatabaseOperations:
         """Set or update a configuration value."""
         existing = db.query(ConfigRecord).filter(ConfigRecord.config_key == config_key).first()
         if existing:
-            existing.config_value = config_value  # type: ignore
-            existing.updated_by = updated_by  # type: ignore
-            existing.updated_at = datetime.now()  # type: ignore
+            existing.config_value = config_value
+            existing.updated_by = updated_by
+            existing.updated_at = datetime.now()
             db.commit()
             db.refresh(existing)
             return existing
@@ -235,8 +284,8 @@ class DatabaseOperations:
         """Update token last used timestamp and increment usage count."""
         token = db.query(APIToken).filter(APIToken.token_id == token_id).first()
         if token:
-            token.last_used = datetime.now()  # type: ignore
-            token.usage_count = (token.usage_count or 0) + 1  # type: ignore
+            token.last_used = datetime.now()
+            token.usage_count = (token.usage_count or 0) + 1
             db.commit()
 
     @staticmethod
@@ -247,7 +296,7 @@ class DatabaseOperations:
             APIToken.user_id == user_id
         ).first()
         if token:
-            token.is_active = False  # type: ignore
+            token.is_active = False
             db.commit()
             return True
         return False
@@ -332,7 +381,7 @@ class DatabaseOperations:
             return False
 
         # Increment usage count
-        invitation.current_uses += 1  # type: ignore
+        invitation.current_uses += 1
         db.commit()
         return True
 
@@ -396,8 +445,8 @@ class DatabaseOperations:
         """Update admin password."""
         admin = db.query(Admin).filter(Admin.username == username, Admin.is_active == True).first()
         if admin:
-            admin.password_hash = new_password_hash  # type: ignore
-            admin.updated_at = datetime.now()  # type: ignore
+            admin.password_hash = new_password_hash
+            admin.updated_at = datetime.now()
             db.commit()
             return True
         return False

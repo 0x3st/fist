@@ -12,6 +12,7 @@ from core.models import (
     BatchModerationRequest, BatchModerationResponse, BatchJobStatusResponse,
     HealthCheckResponse, MetricsResponse, CacheStatsResponse
 )
+from core.type_adapters import convert_moderation_record
 from pydantic import BaseModel, Field
 from core.database import get_db, DatabaseOperations
 from core.auth import require_api_auth
@@ -312,16 +313,4 @@ async def get_moderation_result(
             detail="Moderation record not found"
         )
 
-    return ModerationResult(
-        moderation_id=record.id,  # type: ignore
-        content_hash=record.content_hash,  # type: ignore
-        ai_result=AIResult(
-            inappropriate_probability=record.inappropriate_probability,  # type: ignore
-            reason="AI analysis completed"
-        ),
-        final_decision=record.final_decision,  # type: ignore
-        reason="Decision based on AI analysis",
-        created_at=record.created_at,  # type: ignore
-        word_count=record.word_count,  # type: ignore
-        percentage_used=record.percentage_used  # type: ignore
-    )
+    return convert_moderation_record(record)

@@ -16,6 +16,7 @@ from core.models import (
     UserLimitUpdateRequest, AIConfigUpdateRequest, AdminPasswordUpdateRequest,
     UserResponse
 )
+from core.type_adapters import convert_users_list, convert_invitation_codes_list
 from core.database import get_db, DatabaseOperations
 from core.auth import (
     verify_admin_credentials, create_admin_access_token, require_admin_auth,
@@ -77,15 +78,7 @@ async def get_all_users(
 ):
     """Get all users for admin management."""
     users = DatabaseOperations.get_all_users(db)
-    user_responses = []
-
-    for user in users:
-        user_responses.append(UserResponse(
-            user_id=user.user_id,  # type: ignore
-            username=user.username,  # type: ignore
-            created_at=user.created_at,  # type: ignore
-            is_active=bool(user.is_active)  # type: ignore
-        ))
+    user_responses = convert_users_list(users)
 
     return AdminUserListResponse(
         users=user_responses,
@@ -172,18 +165,7 @@ async def get_invitation_codes(
 ):
     """Get all invitation codes."""
     codes = DatabaseOperations.get_all_invitation_codes(db)
-
-    return [
-        InvitationCodeResponse(
-            code=code.code,  # type: ignore
-            created_at=code.created_at,  # type: ignore
-            expires_at=code.expires_at,  # type: ignore
-            max_uses=code.max_uses,  # type: ignore
-            current_uses=code.current_uses,  # type: ignore
-            is_active=bool(code.is_active)  # type: ignore
-        )
-        for code in codes
-    ]
+    return convert_invitation_codes_list(codes)
 
 
 @router.delete("/invitation-codes/{code}")

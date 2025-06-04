@@ -1,5 +1,5 @@
-# FIST Content Moderation API - Fixed pyproject.toml Dockerfile
-FROM python:3.11-slim
+# FIST Content Moderation API - Updated for Python 3.13
+FROM python:3.13-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -23,8 +23,8 @@ COPY . .
 # Install dependencies
 RUN pip install --no-cache-dir -e .
 
-# Install spaCy model
-RUN python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl
+# Install spaCy model (compatible with current spaCy version)
+RUN python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash fist

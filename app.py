@@ -20,17 +20,19 @@ Architecture:
 - Vercel deployment ready with PostgreSQL support
 """
 import os
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Callable, Awaitable
 from fastapi import FastAPI, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.encoders import jsonable_encoder
 import time
 
 from core.config import Config
 from core.models import ErrorResponse
-from core.database import create_tables, load_config_from_database
+from core.database import create_tables, load_config_from_database, initialize_admin_user
 from routes.api_routes import router as api_router
 from routes.user_routes import router as user_router
 from routes.admin_routes import router as admin_router
@@ -43,7 +45,9 @@ async def lifespan(app_instance: FastAPI):  # noqa: ARG001
     # Startup
     try:
         create_tables()
+        initialize_admin_user()
         load_config_from_database()
+        print("Application startup completed successfully")
     except Exception as e:
         print(f"Database initialization error: {e}")
         # Continue startup even if database initialization fails
@@ -376,13 +380,18 @@ async def read_root():
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):  # noqa: ARG001
     """Global exception handler."""
+    error_response = ErrorResponse(
+        error="Internal server error",
+        detail=str(exc),
+        timestamp=datetime.now()
+    )
+
+    # Use FastAPI's jsonable_encoder to handle datetime serialization
+    content = jsonable_encoder(error_response)
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=ErrorResponse(
-            error="Internal server error",
-            detail=str(exc),
-            timestamp=datetime.now()
-        ).dict()
+        content=content
     )
 
 
