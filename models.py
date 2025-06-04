@@ -31,6 +31,52 @@ class AIResult(BaseModel):
     reason: str = Field(..., description="Brief explanation of the assessment")
 
 
+class SentimentAnalysisResult(BaseModel):
+    """Sentiment analysis result model."""
+    score: float = Field(..., description="Sentiment score (-1.0 to 1.0)")
+    confidence: float = Field(..., description="Confidence level (0.0 to 1.0)")
+    label: str = Field(..., description="Sentiment label (positive, negative, neutral)")
+    backend: str = Field(..., description="Analysis backend used")
+
+
+class TopicExtractionResult(BaseModel):
+    """Topic extraction result model."""
+    primary_topic: str = Field(..., description="Primary topic identified")
+    topic_confidence: float = Field(..., description="Confidence in primary topic")
+    all_topics: List[Dict[str, float]] = Field(..., description="All topics with confidence scores")
+    keywords: List[str] = Field(..., description="Extracted keywords")
+    categories: List[str] = Field(..., description="Content categories")
+    content_type: str = Field(..., description="Detected content type")
+    language: str = Field(..., description="Detected language")
+
+
+class TextQualityResult(BaseModel):
+    """Text quality analysis result model."""
+    quality_score: float = Field(..., description="Overall quality score (0.0 to 1.0)")
+    readability_level: str = Field(..., description="Readability level")
+    complexity_score: float = Field(..., description="Text complexity score")
+    spam_probability: float = Field(..., description="Spam probability (0.0 to 1.0)")
+    spelling_errors: int = Field(..., description="Number of spelling errors detected")
+
+
+class EnhancedModerationResult(BaseModel):
+    """Enhanced moderation result with advanced analysis."""
+    moderation_id: str = Field(..., description="Unique identifier for this moderation")
+    content_hash: str = Field(..., description="SHA-256 hash of content for verification")
+    ai_result: AIResult = Field(..., description="AI assessment result")
+    final_decision: str = Field(..., description="Final decision: A (Approved), R (Rejected), M (Manual review)")
+    reason: str = Field(..., description="Explanation for the final decision")
+    created_at: datetime = Field(..., description="Timestamp when moderation was performed")
+    word_count: int = Field(..., description="Word count of original content")
+    percentage_used: float = Field(..., description="Percentage of content that was analyzed")
+
+    # Enhanced analysis results
+    sentiment_analysis: Optional[SentimentAnalysisResult] = Field(None, description="Sentiment analysis results")
+    topic_extraction: Optional[TopicExtractionResult] = Field(None, description="Topic extraction results")
+    text_quality: Optional[TextQualityResult] = Field(None, description="Text quality analysis results")
+    analysis_confidence: float = Field(..., description="Overall analysis confidence")
+
+
 class ModerationResult(BaseModel):
     """Final moderation result model - privacy focused."""
     moderation_id: str = Field(..., description="Unique identifier for this moderation")
@@ -309,3 +355,46 @@ class ConfigRecord(Base):
     config_value = Column(Text, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     updated_by = Column(String(100), nullable=False)
+
+
+class SentimentRecord(Base):
+    """Database model for sentiment analysis results."""
+    __tablename__ = "sentiment_records"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    moderation_id = Column(String, ForeignKey("moderation_records.id"), nullable=False)
+    sentiment_score = Column(Float, nullable=False)
+    sentiment_confidence = Column(Float, nullable=False)
+    sentiment_label = Column(String(20), nullable=False)
+    backend_used = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class TopicRecord(Base):
+    """Database model for topic extraction results."""
+    __tablename__ = "topic_records"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    moderation_id = Column(String, ForeignKey("moderation_records.id"), nullable=False)
+    primary_topic = Column(String(100), nullable=False)
+    topic_confidence = Column(Float, nullable=False)
+    keywords = Column(Text, nullable=True)  # JSON string of keywords
+    categories = Column(Text, nullable=True)  # JSON string of categories
+    content_type = Column(String(50), nullable=False)
+    detected_language = Column(String(10), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class TextQualityRecord(Base):
+    """Database model for text quality analysis results."""
+    __tablename__ = "text_quality_records"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    moderation_id = Column(String, ForeignKey("moderation_records.id"), nullable=False)
+    quality_score = Column(Float, nullable=False)
+    readability_level = Column(String(20), nullable=False)
+    complexity_score = Column(Float, nullable=False)
+    spam_probability = Column(Float, nullable=False)
+    spelling_errors = Column(Integer, nullable=False)
+    analysis_confidence = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)

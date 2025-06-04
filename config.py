@@ -58,3 +58,29 @@ class Config:
     # Batch Processing Configuration
     MAX_BATCH_SIZE = int(os.getenv("MAX_BATCH_SIZE", "100"))
     BATCH_TIMEOUT = int(os.getenv("BATCH_TIMEOUT", "300"))  # 5 minutes
+
+    # Enhanced Text Analysis Configuration
+    ENABLE_SENTIMENT_ANALYSIS = os.getenv("ENABLE_SENTIMENT_ANALYSIS", "True").lower() == "true"
+    ENABLE_TOPIC_EXTRACTION = os.getenv("ENABLE_TOPIC_EXTRACTION", "True").lower() == "true"
+    ENABLE_TEXT_ANALYSIS = os.getenv("ENABLE_TEXT_ANALYSIS", "True").lower() == "true"
+
+    # Sentiment Analysis Configuration
+    SENTIMENT_BACKEND = os.getenv("SENTIMENT_BACKEND", "auto")  # auto, vader, textblob, transformers
+    SENTIMENT_THRESHOLD_NEGATIVE = float(os.getenv("SENTIMENT_THRESHOLD_NEGATIVE", "-0.5"))
+    SENTIMENT_THRESHOLD_POSITIVE = float(os.getenv("SENTIMENT_THRESHOLD_POSITIVE", "0.5"))
+
+    # Topic Extraction Configuration
+    MAX_TOPICS = int(os.getenv("MAX_TOPICS", "5"))
+    MIN_TOPIC_CONFIDENCE = float(os.getenv("MIN_TOPIC_CONFIDENCE", "0.1"))
+
+    # Text Quality Configuration
+    MIN_QUALITY_SCORE = float(os.getenv("MIN_QUALITY_SCORE", "0.3"))
+    MAX_SPAM_PROBABILITY = float(os.getenv("MAX_SPAM_PROBABILITY", "0.7"))
+
+    # Language Processing Configuration
+    DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "en")
+    ENABLE_MULTILINGUAL = os.getenv("ENABLE_MULTILINGUAL", "True").lower() == "true"
+
+    # Dynamic Threshold Configuration
+    REJECTION_THRESHOLD = float(os.getenv("REJECTION_THRESHOLD", "0.8"))
+    MANUAL_REVIEW_THRESHOLD = float(os.getenv("MANUAL_REVIEW_THRESHOLD", "0.5"))

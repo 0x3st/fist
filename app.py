@@ -23,7 +23,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 import time
 
@@ -45,8 +45,7 @@ async def lifespan(_app: FastAPI):
         load_config_from_database()
     except Exception as e:
         print(f"Database initialization error: {e}")
-        # For Vercel deployment, we might need to handle database connection issues gracefully
-        # The app will still start but database operations might fail
+        # Continue startup even if database initialization fails
     yield
     # Shutdown (if needed)
 
@@ -73,7 +72,7 @@ app.add_middleware(
 
 # Performance monitoring middleware
 @app.middleware("http")
-async def performance_monitoring_middleware(request: Request, call_next):
+async def performance_monitoring_middleware(request: Request, call_next) -> Response:
     """Middleware to monitor API performance and collect metrics."""
     start_time = time.time()
 
@@ -138,7 +137,7 @@ def read_readme() -> str:
         # Try multiple possible paths for README.md
         possible_paths = [
             os.path.join(os.path.dirname(__file__), "README.md"),  # Same directory as app.py
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md"),  # Parent directory (for Vercel)
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md"),  # Parent directory
             "README.md",  # Current working directory
         ]
 
