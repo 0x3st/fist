@@ -1,0 +1,91 @@
+# Docker Compose 覆盖配置示例
+# 复制此文件为 docker-compose.override.yml 并根据需要修改
+# docker-compose.override.yml 会自动与 docker-compose.yml 合并
+
+version: '3.8'
+
+services:
+  fist-api:
+    environment:
+      # 覆盖默认环境变量
+      - SECRET_KEY=your_custom_secret_key_here
+      - ADMIN_PASSWORD=your_custom_admin_password
+      - AI_API_KEY=your_ai_api_key_here
+      - DEBUG=true  # 开发环境设置
+      
+      # 自定义功能开关
+      - ENABLE_SENTIMENT_ANALYSIS=true
+      - ENABLE_TOPIC_EXTRACTION=false
+      - ENABLE_TEXT_ANALYSIS=true
+      - ENABLE_MULTILINGUAL=false
+      - ENABLE_CACHING=false  # 开发环境可能不需要缓存
+      
+      # 性能配置
+      - MAX_CONTENT_LENGTH=5000
+      - MAX_BATCH_SIZE=500
+      - CACHE_TTL=1800
+      - WORKER_THREADS=2
+    
+    # 开发环境端口映射
+    ports:
+      - "8001:8000"  # 如果8000端口被占用
+    
+    # 开发环境卷挂载
+    volumes:
+      - ./logs:/app/logs
+      - ./dev-data:/app/data  # 开发数据目录
+    
+    # 开发环境资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  db:
+    environment:
+      # 自定义数据库配置
+      POSTGRES_DB: fist_dev_db
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    
+    # 开发环境端口映射（生产环境应该移除）
+    ports:
+      - "5433:5432"  # 避免与本地PostgreSQL冲突
+    
+    # 开发环境数据持久化
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./dev-sql:/docker-entrypoint-initdb.d  # 开发环境初始化脚本
+
+  redis:
+    # 开发环境端口映射
+    ports:
+      - "6380:6379"  # 避免与本地Redis冲突
+    
+    # 开发环境配置
+    command: redis-server --appendonly yes --maxmemory 256mb
+    
+    volumes:
+      - redis_dev_data:/data
+
+  # 开发环境可能不需要nginx
+  nginx:
+    profiles:
+      - production  # 只在生产环境启动
+
+# 开发环境专用卷
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+
+# 开发环境网络配置
+networks:
+  fist-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
