@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from collections import defaultdict, deque
 
-from config import Config
+from core.config import Config
 
 
 class ThresholdType(Enum):
@@ -52,7 +52,7 @@ class AdaptiveThreshold:
     adjustments: List[ThresholdAdjustment] = field(default_factory=list)
     current_value: float = 0.0
     last_updated: float = 0.0
-    
+
     def __post_init__(self):
         if self.current_value == 0.0:
             self.current_value = self.base_value
@@ -89,11 +89,11 @@ class ThresholdDecision:
 
 class DynamicThresholdManager:
     """Manages adaptive thresholds for content moderation decisions."""
-    
+
     def __init__(self):
         """Initialize the threshold manager."""
         self.logger = logging.getLogger(__name__)
-        
+
         # Initialize base thresholds from config
         self.thresholds = {
             ThresholdType.REJECTION: AdaptiveThreshold(
@@ -109,7 +109,7 @@ class DynamicThresholdManager:
                 current_value=Config.MANUAL_REVIEW_THRESHOLD
             )
         }
-        
+
         # Historical data for learning
         self.decision_history = deque(maxlen=1000)  # Last 1000 decisions
         self.performance_metrics = {
@@ -118,15 +118,15 @@ class DynamicThresholdManager:
             'false_negatives': 0,
             'total_decisions': 0
         }
-        
+
         # Context-based adjustment rules
         self.adjustment_rules = self._initialize_adjustment_rules()
-        
+
         # Time-based patterns
         self.time_patterns = defaultdict(list)
-        
+
         self.logger.info("Dynamic threshold manager initialized")
-    
+
     def _initialize_adjustment_rules(self) -> Dict[ContextFactor, List[ThresholdAdjustment]]:
         """Initialize context-based adjustment rules."""
         rules = {
@@ -156,7 +156,7 @@ class DynamicThresholdManager:
                     "Technical content may use specialized language"
                 )
             ],
-            
+
             ContextFactor.CONTENT_LENGTH: [
                 ThresholdAdjustment(
                     ContextFactor.CONTENT_LENGTH,
@@ -171,7 +171,7 @@ class DynamicThresholdManager:
                     "Long content provides more context for analysis"
                 )
             ],
-            
+
             ContextFactor.SENTIMENT: [
                 ThresholdAdjustment(
                     ContextFactor.SENTIMENT,
@@ -186,7 +186,7 @@ class DynamicThresholdManager:
                     "Positive sentiment reduces moderation risk"
                 )
             ],
-            
+
             ContextFactor.TOPIC: [
                 ThresholdAdjustment(
                     ContextFactor.TOPIC,
@@ -207,7 +207,7 @@ class DynamicThresholdManager:
                     "Entertainment content is generally less risky"
                 )
             ],
-            
+
             ContextFactor.LANGUAGE: [
                 ThresholdAdjustment(
                     ContextFactor.LANGUAGE,
@@ -216,7 +216,7 @@ class DynamicThresholdManager:
                     "Non-English content may require specialized review"
                 )
             ],
-            
+
             ContextFactor.TIME_OF_DAY: [
                 ThresholdAdjustment(
                     ContextFactor.TIME_OF_DAY,
@@ -231,7 +231,7 @@ class DynamicThresholdManager:
                     "Full moderation staff available during peak hours"
                 )
             ],
-            
+
             ContextFactor.USER_HISTORY: [
                 ThresholdAdjustment(
                     ContextFactor.USER_HISTORY,
@@ -246,7 +246,7 @@ class DynamicThresholdManager:
                     "User has good moderation history"
                 )
             ],
-            
+
             ContextFactor.SYSTEM_LOAD: [
                 ThresholdAdjustment(
                     ContextFactor.SYSTEM_LOAD,
@@ -262,17 +262,17 @@ class DynamicThresholdManager:
                 )
             ]
         }
-        
+
         return rules
-    
+
     def _evaluate_context_condition(self, condition: str, context: ThresholdContext) -> bool:
         """
         Evaluate if a context condition is met.
-        
+
         Args:
             condition: Condition to evaluate
             context: Current context
-            
+
         Returns:
             True if condition is met
         """
@@ -285,19 +285,19 @@ class DynamicThresholdManager:
             return context.content_type == "promotional"
         elif condition == "technical":
             return context.content_type == "technical"
-        
+
         # Content length conditions
         elif condition == "very_short":
             return context.content_length < 20
         elif condition == "very_long":
             return context.content_length > 500
-        
+
         # Sentiment conditions
         elif condition == "very_negative":
             return context.sentiment_score < -0.7
         elif condition == "positive":
             return context.sentiment_score > 0.3
-        
+
         # Topic conditions
         elif condition == "politics":
             return "politic" in context.primary_topic.lower()
@@ -305,67 +305,67 @@ class DynamicThresholdManager:
             return "health" in context.primary_topic.lower() or "medical" in context.primary_topic.lower()
         elif condition == "entertainment":
             return "entertainment" in context.primary_topic.lower()
-        
+
         # Language conditions
         elif condition == "non_english":
             return context.language != "en"
-        
+
         # Time conditions
         elif condition == "night_hours":
             return context.time_of_day >= 22 or context.time_of_day <= 6
         elif condition == "peak_hours":
             return 9 <= context.time_of_day <= 17
-        
+
         # User history conditions
         elif condition == "high_risk_user":
             return context.user_risk_score > 0.7
         elif condition == "trusted_user":
             return context.user_risk_score < 0.3
-        
+
         # System load conditions
         elif condition == "high_load":
             return context.system_load > 0.8
         elif condition == "low_load":
             return context.system_load < 0.3
-        
+
         return False
-    
+
     def calculate_adjusted_threshold(self, threshold_type: ThresholdType, context: ThresholdContext) -> Tuple[float, List[ThresholdAdjustment]]:
         """
         Calculate adjusted threshold based on context.
-        
+
         Args:
             threshold_type: Type of threshold to calculate
             context: Current context
-            
+
         Returns:
             Tuple of (adjusted_threshold, applied_adjustments)
         """
         base_threshold = self.thresholds[threshold_type]
         adjusted_value = base_threshold.current_value
         applied_adjustments = []
-        
+
         # Apply context-based adjustments
         for factor, rules in self.adjustment_rules.items():
             for rule in rules:
                 if self._evaluate_context_condition(rule.condition, context):
                     adjusted_value += rule.adjustment * rule.confidence
                     applied_adjustments.append(rule)
-        
+
         # Apply bounds
-        adjusted_value = max(base_threshold.min_value, 
+        adjusted_value = max(base_threshold.min_value,
                            min(base_threshold.max_value, adjusted_value))
-        
+
         return adjusted_value, applied_adjustments
-    
+
     def make_threshold_decision(self, ai_score: float, context: ThresholdContext) -> ThresholdDecision:
         """
         Make a moderation decision using adaptive thresholds.
-        
+
         Args:
             ai_score: AI model confidence score (0-1)
             context: Decision context
-            
+
         Returns:
             Threshold decision
         """
@@ -376,7 +376,7 @@ class DynamicThresholdManager:
         manual_threshold, manual_adjustments = self.calculate_adjusted_threshold(
             ThresholdType.MANUAL_REVIEW, context
         )
-        
+
         # Make decision
         if ai_score >= rejection_threshold:
             decision = "R"
@@ -385,7 +385,7 @@ class DynamicThresholdManager:
             adjustments = rejection_adjustments
             confidence = min(1.0, (ai_score - rejection_threshold) / (1.0 - rejection_threshold))
             reasoning = f"AI score {ai_score:.3f} exceeds rejection threshold {rejection_threshold:.3f}"
-            
+
         elif ai_score >= manual_threshold:
             decision = "M"
             threshold_used = manual_threshold
@@ -393,7 +393,7 @@ class DynamicThresholdManager:
             adjustments = manual_adjustments
             confidence = min(1.0, (ai_score - manual_threshold) / (rejection_threshold - manual_threshold))
             reasoning = f"AI score {ai_score:.3f} requires manual review (threshold {manual_threshold:.3f})"
-            
+
         else:
             decision = "A"
             threshold_used = manual_threshold
@@ -401,12 +401,12 @@ class DynamicThresholdManager:
             adjustments = manual_adjustments
             confidence = min(1.0, (manual_threshold - ai_score) / manual_threshold)
             reasoning = f"AI score {ai_score:.3f} below manual review threshold {manual_threshold:.3f}"
-        
+
         # Add adjustment reasoning
         if adjustments:
             adjustment_reasons = [adj.reason for adj in adjustments]
             reasoning += f" (Adjustments: {'; '.join(adjustment_reasons)})"
-        
+
         decision_result = ThresholdDecision(
             decision=decision,
             confidence=confidence,
@@ -416,12 +416,12 @@ class DynamicThresholdManager:
             context=context,
             reasoning=reasoning
         )
-        
+
         # Record decision for learning
         self._record_decision(decision_result, ai_score)
-        
+
         return decision_result
-    
+
     def _record_decision(self, decision: ThresholdDecision, ai_score: float):
         """Record decision for historical analysis and learning."""
         record = {
@@ -439,20 +439,20 @@ class DynamicThresholdManager:
                 'time_of_day': decision.context.time_of_day
             }
         }
-        
+
         self.decision_history.append(record)
         self.performance_metrics['total_decisions'] += 1
-    
+
     def analyze_performance(self) -> Dict[str, Any]:
         """
         Analyze threshold performance and suggest adjustments.
-        
+
         Returns:
             Performance analysis results
         """
         if len(self.decision_history) < 10:
             return {"status": "insufficient_data", "decisions_count": len(self.decision_history)}
-        
+
         # Analyze decision patterns
         decisions = [d['decision'] for d in self.decision_history]
         decision_counts = {
@@ -460,14 +460,14 @@ class DynamicThresholdManager:
             'M': decisions.count('M'),
             'A': decisions.count('A')
         }
-        
+
         # Analyze by content type
         content_type_analysis = defaultdict(lambda: {'R': 0, 'M': 0, 'A': 0})
         for record in self.decision_history:
             content_type = record['context']['content_type']
             decision = record['decision']
             content_type_analysis[content_type][decision] += 1
-        
+
         # Analyze threshold effectiveness
         recent_decisions = list(self.decision_history)[-100:]  # Last 100 decisions
         avg_ai_scores = {
@@ -475,10 +475,10 @@ class DynamicThresholdManager:
             'M': [],
             'A': []
         }
-        
+
         for record in recent_decisions:
             avg_ai_scores[record['decision']].append(record['ai_score'])
-        
+
         # Calculate average scores for each decision type
         avg_scores = {}
         for decision_type, scores in avg_ai_scores.items():
@@ -489,7 +489,7 @@ class DynamicThresholdManager:
                     'max': max(scores),
                     'count': len(scores)
                 }
-        
+
         return {
             'status': 'analysis_complete',
             'total_decisions': len(self.decision_history),
@@ -501,46 +501,46 @@ class DynamicThresholdManager:
                 'manual_review': self.thresholds[ThresholdType.MANUAL_REVIEW].current_value
             }
         }
-    
+
     def update_thresholds_from_feedback(self, feedback_data: List[Dict[str, Any]]):
         """
         Update thresholds based on feedback data.
-        
+
         Args:
             feedback_data: List of feedback records with actual outcomes
         """
         if not feedback_data:
             return
-        
+
         # Analyze feedback to identify threshold adjustment needs
         false_positives = 0
         false_negatives = 0
-        
+
         for feedback in feedback_data:
             predicted = feedback.get('predicted_decision')
             actual = feedback.get('actual_decision')
-            
+
             if predicted == 'R' and actual in ['A', 'M']:
                 false_positives += 1
             elif predicted == 'A' and actual in ['R', 'M']:
                 false_negatives += 1
-        
+
         total_feedback = len(feedback_data)
         false_positive_rate = false_positives / total_feedback
         false_negative_rate = false_negatives / total_feedback
-        
+
         # Adjust thresholds based on error rates
         if false_positive_rate > 0.1:  # Too many false positives
             # Lower rejection threshold
             current_rejection = self.thresholds[ThresholdType.REJECTION]
             adjustment = -0.05 * (false_positive_rate - 0.1)
-            new_value = max(current_rejection.min_value, 
+            new_value = max(current_rejection.min_value,
                           current_rejection.current_value + adjustment)
             current_rejection.current_value = new_value
             current_rejection.last_updated = time.time()
-            
+
             self.logger.info(f"Lowered rejection threshold to {new_value:.3f} due to high false positive rate")
-        
+
         if false_negative_rate > 0.1:  # Too many false negatives
             # Lower manual review threshold
             current_manual = self.thresholds[ThresholdType.MANUAL_REVIEW]
@@ -549,37 +549,37 @@ class DynamicThresholdManager:
                           current_manual.current_value + adjustment)
             current_manual.current_value = new_value
             current_manual.last_updated = time.time()
-            
+
             self.logger.info(f"Lowered manual review threshold to {new_value:.3f} due to high false negative rate")
-        
+
         # Update performance metrics
         self.performance_metrics['false_positives'] += false_positives
         self.performance_metrics['false_negatives'] += false_negatives
-        
+
         if self.performance_metrics['total_decisions'] > 0:
-            total_errors = (self.performance_metrics['false_positives'] + 
+            total_errors = (self.performance_metrics['false_positives'] +
                           self.performance_metrics['false_negatives'])
             self.performance_metrics['accuracy'] = 1.0 - (total_errors / self.performance_metrics['total_decisions'])
-    
+
     def get_threshold_context_from_analysis(self, enhanced_analysis: Dict[str, Any]) -> ThresholdContext:
         """
         Create threshold context from enhanced analysis results.
-        
+
         Args:
             enhanced_analysis: Results from enhanced analysis
-            
+
         Returns:
             Threshold context
         """
         context = ThresholdContext()
-        
+
         # Extract sentiment information
         if 'sentiment' in enhanced_analysis:
             sentiment_data = enhanced_analysis['sentiment']
             if isinstance(sentiment_data, dict):
                 context.sentiment_score = sentiment_data.get('sentiment_score', 0.0)
                 context.sentiment_label = sentiment_data.get('sentiment_label', 'neutral')
-        
+
         # Extract topic information
         if 'topic' in enhanced_analysis:
             topic_data = enhanced_analysis['topic']
@@ -587,25 +587,25 @@ class DynamicThresholdManager:
                 context.primary_topic = topic_data.get('primary_topic', 'general')
                 context.content_type = topic_data.get('content_type', 'general')
                 context.language = topic_data.get('language', 'en')
-        
+
         # Extract text analysis information
         if 'text_analysis' in enhanced_analysis:
             text_data = enhanced_analysis['text_analysis']
             if isinstance(text_data, dict):
                 context.content_length = text_data.get('word_count', 0)
-        
+
         # Set time of day
         import datetime
         context.time_of_day = datetime.datetime.now().hour
-        
+
         # Set default system load (would be calculated from actual system metrics)
         context.system_load = 0.5
-        
+
         # Set default user risk score (would come from user management system)
         context.user_risk_score = 0.5
-        
+
         context.enhanced_analysis = enhanced_analysis
-        
+
         return context
 
 
@@ -624,11 +624,11 @@ def get_threshold_manager() -> DynamicThresholdManager:
 def make_adaptive_decision(ai_score: float, enhanced_analysis: Dict[str, Any]) -> ThresholdDecision:
     """
     Convenience function to make adaptive threshold decision.
-    
+
     Args:
         ai_score: AI model confidence score
         enhanced_analysis: Enhanced analysis results
-        
+
     Returns:
         Threshold decision
     """

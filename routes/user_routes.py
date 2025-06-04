@@ -9,16 +9,16 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Depends, status, Header
 from sqlalchemy.orm import Session
 
-from models import (
+from core.models import (
     UserCreateRequest, UserResponse, UserLoginRequest, UserLoginResponse,
     TokenCreateRequest, TokenResponse, UsageStatsResponse
 )
-from database import get_db, DatabaseOperations
-from auth import (
+from core.database import get_db, DatabaseOperations
+from core.auth import (
     get_password_hash, verify_password, create_user_access_token,
     generate_api_token, hash_token, verify_user_token
 )
-from config import Config
+from core.config import Config
 
 # Create user router
 router = APIRouter(prefix="/api/user", tags=["User Management"])

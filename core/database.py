@@ -11,8 +11,8 @@ from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from config import Config
-from models import Base, ModerationRecord, ConfigRecord, User, APIToken, InvitationCode, Admin
+from .config import Config
+from .models import Base, ModerationRecord, ConfigRecord, User, APIToken, InvitationCode, Admin
 
 
 # Database Setup

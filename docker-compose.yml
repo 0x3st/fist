@@ -1,0 +1,79 @@
+# FIST Content Moderation API - Docker Compose Configuration
+version: '3.8'
+
+services:
+  # FIST API Service
+  fist-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:fist_password@db:5432/fist_db
+      - REDIS_URL=redis://redis:6379
+      - ADMIN_PASSWORD=admin_password_change_me
+      - SECRET_KEY=your_secret_key_change_me
+      - ENABLE_SENTIMENT_ANALYSIS=true
+      - ENABLE_TOPIC_EXTRACTION=true
+      - ENABLE_TEXT_ANALYSIS=true
+      - ENABLE_MULTILINGUAL=true
+      - ENABLE_CACHING=true
+      - DEBUG=false
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - fist-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fist_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: fist_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - fist-network
+    ports:
+      - "5432:5432"  # Remove in production
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - fist-network
+    ports:
+      - "6379:6379"  # Remove in production
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - fist-api
+    restart: unless-stopped
+    networks:
+      - fist-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  fist-network:
+    driver: bridge

@@ -10,24 +10,39 @@ import json
 import logging
 from typing import List, Optional, Dict, Any
 
-from ai_connector import AIConnector
-from config import Config
-from cache import cache_manager
-from monitoring import metrics_collector
+from ai.ai_connector import AIConnector
+from core.config import Config
+from utils.cache import cache_manager
+from utils.monitoring import metrics_collector
 
-# Import enhanced text analysis services
-try:
-    from services.sentiment_analyzer import get_sentiment_analyzer, SentimentResult
-    from services.topic_extractor import get_topic_extractor, TopicResult
-    from services.text_analyzer import get_text_analyzer, TextAnalysisResult
-    from services.content_processor import get_content_processor, process_content_intelligently
-    from services.threshold_manager import get_threshold_manager, make_adaptive_decision
-    ENHANCED_ANALYSIS_AVAILABLE = True
-    INTELLIGENT_PROCESSING_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"Enhanced text analysis not available: {e}")
-    ENHANCED_ANALYSIS_AVAILABLE = False
-    INTELLIGENT_PROCESSING_AVAILABLE = False
+# Enhanced analysis availability flags (will be set dynamically)
+ENHANCED_ANALYSIS_AVAILABLE = None
+INTELLIGENT_PROCESSING_AVAILABLE = None
+
+def _check_enhanced_analysis_availability():
+    """Check if enhanced analysis modules are available (lazy check)."""
+    global ENHANCED_ANALYSIS_AVAILABLE, INTELLIGENT_PROCESSING_AVAILABLE
+
+    if ENHANCED_ANALYSIS_AVAILABLE is not None:
+        return ENHANCED_ANALYSIS_AVAILABLE, INTELLIGENT_PROCESSING_AVAILABLE
+
+    try:
+        # Try importing AI modules
+        from ai.sentiment_analyzer import get_sentiment_analyzer
+        from ai.topic_extractor import get_topic_extractor
+        from ai.text_analyzer import get_text_analyzer
+        from ai.content_processor import process_content_intelligently
+        from ai.threshold_manager import make_adaptive_decision
+
+        ENHANCED_ANALYSIS_AVAILABLE = True
+        INTELLIGENT_PROCESSING_AVAILABLE = True
+        logging.info("Enhanced text analysis modules available")
+    except ImportError as e:
+        logging.warning(f"Enhanced text analysis not available: {e}")
+        ENHANCED_ANALYSIS_AVAILABLE = False
+        INTELLIGENT_PROCESSING_AVAILABLE = False
+
+    return ENHANCED_ANALYSIS_AVAILABLE, INTELLIGENT_PROCESSING_AVAILABLE
 
 
 class ModerationService:
@@ -101,12 +116,14 @@ class ModerationService:
         Returns:
             Tuple of (processed_content, actual_percentage)
         """
-        if not INTELLIGENT_PROCESSING_AVAILABLE:
+        enhanced_available, intelligent_available = _check_enhanced_analysis_availability()
+        if not intelligent_available:
             # Fallback to traditional piercing
             return self.pierce_content(text)
 
         try:
             # Use intelligent content processor
+            from ai.content_processor import process_content_intelligently
             processed_content = process_content_intelligently(text, target_percentage)
 
             # Calculate actual percentage
@@ -228,7 +245,7 @@ class ModerationService:
         self,
         ai_result: Dict[str, Any],
         enhanced_analysis: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Any]:
         """
         Analyze AI result using adaptive threshold management.
 
@@ -239,7 +256,8 @@ class ModerationService:
         Returns:
             Dictionary with final decision and reason
         """
-        if not INTELLIGENT_PROCESSING_AVAILABLE:
+        enhanced_available, intelligent_available = _check_enhanced_analysis_availability()
+        if not intelligent_available:
             # Fallback to enhanced analysis
             return self.analyze_result_enhanced(ai_result, None, enhanced_analysis)
 
@@ -249,6 +267,7 @@ class ModerationService:
             ai_score = inappropriate_prob / 100.0  # Convert percentage to 0-1 scale
 
             # Make adaptive decision
+            from ai.threshold_manager import make_adaptive_decision
             decision_result = make_adaptive_decision(ai_score, enhanced_analysis or {})
 
             # Format reason with adaptive context
@@ -291,12 +310,14 @@ class ModerationService:
         """
         enhanced_results = {}
 
-        if not ENHANCED_ANALYSIS_AVAILABLE:
+        enhanced_available, intelligent_available = _check_enhanced_analysis_availability()
+        if not enhanced_available:
             return enhanced_results
 
         try:
             # Sentiment Analysis
             if Config.ENABLE_SENTIMENT_ANALYSIS:
+                from ai.sentiment_analyzer import get_sentiment_analyzer
                 sentiment_analyzer = get_sentiment_analyzer()
                 sentiment_result = sentiment_analyzer.analyze_sentiment(content)
                 enhanced_results["sentiment_analysis"] = {
@@ -309,6 +330,7 @@ class ModerationService:
 
             # Topic Extraction
             if Config.ENABLE_TOPIC_EXTRACTION:
+                from ai.topic_extractor import get_topic_extractor
                 topic_extractor = get_topic_extractor()
                 topic_result = topic_extractor.extract_topics(content)
                 enhanced_results["topic_extraction"] = {
@@ -324,6 +346,7 @@ class ModerationService:
 
             # Text Quality Analysis
             if Config.ENABLE_TEXT_ANALYSIS:
+                from ai.text_analyzer import get_text_analyzer
                 text_analyzer = get_text_analyzer()
                 analysis_result = text_analyzer.analyze_text(content)
                 enhanced_results["text_quality"] = {
@@ -377,7 +400,7 @@ class ModerationService:
         if not enhanced_analysis:
             return content
 
-        context_parts = []
+        context_parts: List[str] = []
 
         # Add sentiment context
         if "sentiment_analysis" in enhanced_analysis:
@@ -435,13 +458,16 @@ class ModerationService:
             words = list(content.strip())
         word_count = len(words)
 
+        # Check availability
+        enhanced_available, intelligent_available = _check_enhanced_analysis_availability()
+
         # Perform enhanced analysis if enabled
         enhanced_analysis = {}
-        if enable_enhanced_analysis and ENHANCED_ANALYSIS_AVAILABLE:
+        if enable_enhanced_analysis and enhanced_available:
             enhanced_analysis = self.perform_enhanced_analysis(content)
 
         # Pierce content using intelligent processing if available
-        if use_intelligent_processing and INTELLIGENT_PROCESSING_AVAILABLE:
+        if use_intelligent_processing and intelligent_available:
             # Calculate target percentage from traditional logic
             if percentages is None:
                 percentages = Config.DEFAULT_PERCENTAGES
@@ -474,7 +500,7 @@ class ModerationService:
         ai_result = self.check_content_with_ai(ai_input_content)
 
         # Analyze result with enhanced context and adaptive thresholds
-        if use_intelligent_processing and INTELLIGENT_PROCESSING_AVAILABLE:
+        if use_intelligent_processing and intelligent_available:
             analysis = self.analyze_result_adaptive(ai_result, enhanced_analysis)
         else:
             analysis = self.analyze_result_enhanced(ai_result, probability_thresholds, enhanced_analysis)
@@ -500,3 +526,7 @@ class ModerationService:
         metrics_collector.record_ai_call("success")
 
         return result
+
+
+# Export the main service class
+__all__ = ['ModerationService']

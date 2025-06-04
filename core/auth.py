@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from config import Config
+from .config import Config
 
 # Authentication setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

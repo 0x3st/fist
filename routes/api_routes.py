@@ -3,27 +3,39 @@ API routes for FIST Content Moderation System.
 
 This module contains all REST API endpoints for content moderation.
 """
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, status, Header
 from sqlalchemy.orm import Session
 
-from models import (
+from core.models import (
     ModerationRequest, ModerationResponse, ModerationResult, AIResult,
     BatchModerationRequest, BatchModerationResponse, BatchJobStatusResponse,
     HealthCheckResponse, MetricsResponse, CacheStatsResponse
 )
-from database import get_db, DatabaseOperations
-from services import ModerationService
-from auth import require_api_auth
-from batch_processor import batch_processor
-from background_tasks import background_task_manager
-from monitoring import metrics_collector, monitor_endpoint
-from cache import cache_manager
+from pydantic import BaseModel, Field
+from core.database import get_db, DatabaseOperations
+from core.auth import require_api_auth
+from utils.batch_processor import batch_processor
+from utils.background_tasks import background_task_manager
+from utils.monitoring import metrics_collector, monitor_endpoint
+from utils.cache import cache_manager
 
 # Create API router
 router = APIRouter(prefix="/api")
 
-# Initialize moderation service
-moderation_service = ModerationService()
+# Lazy import for moderation service to avoid circular dependency
+def get_moderation_service():
+    """Get ModerationService instance (lazy import)."""
+    from core.moderation import ModerationService
+    return ModerationService()
+
+
+# Response models for API endpoints
+class CacheClearResponse(BaseModel):
+    """Response model for cache clear operation."""
+    message: str = Field(..., description="Success message")
+    cleared_entries: int = Field(..., description="Number of entries cleared")
+    cleared_by: str = Field(..., description="User who cleared the cache")
 
 
 async def get_authenticated_user(
@@ -52,6 +64,7 @@ async def moderate_content(
     """
     try:
         # Perform moderation
+        moderation_service = get_moderation_service()
         result = moderation_service.moderate_content(
             content=request.content,
             percentages=request.percentages,
@@ -139,7 +152,11 @@ async def moderate_content_batch(
                 total_items=len(request.contents),
                 processed_items=0,
                 progress_percent=0.0,
-                created_at=job_info["created_at"],
+                results=None,
+                errors=None,
+                created_at=job_info["created_at"] if job_info else datetime.now(),
+                started_at=None,
+                completed_at=None,
                 background_task_id=task_id
             )
         else:
@@ -161,9 +178,10 @@ async def moderate_content_batch(
                 progress_percent=100.0,
                 results=[ModerationResult(**r) for r in result["results"]],
                 errors=result["errors"],
-                created_at=job_info["created_at"],
-                started_at=job_info["started_at"],
-                completed_at=job_info["completed_at"]
+                created_at=job_info["created_at"] if job_info else datetime.now(),
+                started_at=job_info["started_at"] if job_info else None,
+                completed_at=job_info["completed_at"] if job_info else datetime.now(),
+                background_task_id=None
             )
 
     except Exception as e:
@@ -261,18 +279,18 @@ async def get_cache_stats():
     return CacheStatsResponse(**stats)
 
 
-@router.delete("/cache/clear")
+@router.delete("/cache/clear", response_model=CacheClearResponse)
 async def clear_cache(
     user_id: str = Depends(get_authenticated_user)
 ):
     """Clear cache entries (requires authentication)."""
     try:
         cleared_count = cache_manager.clear_cache()
-        return {
-            "message": f"Cache cleared successfully",
-            "cleared_entries": cleared_count,
-            "cleared_by": user_id
-        }
+        return CacheClearResponse(
+            message="Cache cleared successfully",
+            cleared_entries=cleared_count,
+            cleared_by=user_id
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

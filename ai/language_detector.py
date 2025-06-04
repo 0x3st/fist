@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from collections import Counter, defaultdict
 
-from config import Config
+from core.config import Config
 
 
 class SupportedLanguage(Enum):
@@ -89,11 +89,11 @@ class LanguageProcessingResult:
 
 class AdvancedLanguageDetector:
     """Advanced language detection with multiple detection methods."""
-    
+
     def __init__(self):
         """Initialize the language detector."""
         self.logger = logging.getLogger(__name__)
-        
+
         # Language family mappings
         self.language_families = {
             SupportedLanguage.ENGLISH: LanguageFamily.INDO_EUROPEAN,
@@ -121,7 +121,7 @@ class AdvancedLanguageDetector:
             SupportedLanguage.VIETNAMESE: LanguageFamily.AUSTROASIATIC,
             SupportedLanguage.THAI: LanguageFamily.TAI_KADAI,
         }
-        
+
         # Character-based language detection patterns
         self.language_patterns = {
             SupportedLanguage.CHINESE_SIMPLIFIED: [
@@ -161,7 +161,7 @@ class AdvancedLanguageDetector:
                 r'[\u0900-\u097f]',  # Devanagari
             ],
         }
-        
+
         # Common words for statistical detection
         self.common_words = {
             SupportedLanguage.ENGLISH: {
@@ -201,12 +201,12 @@ class AdvancedLanguageDetector:
                 '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去'
             },
         }
-        
+
         # Initialize external libraries if available
         self._init_external_libraries()
-        
+
         self.logger.info("Advanced language detector initialized")
-    
+
     def _init_external_libraries(self):
         """Initialize external language detection libraries."""
         # Try to import langdetect
@@ -217,7 +217,7 @@ class AdvancedLanguageDetector:
         except ImportError:
             self.langdetect_available = False
             self.logger.warning("langdetect library not available")
-        
+
         # Try to import polyglot
         try:
             from polyglot.detect import Detector
@@ -226,55 +226,55 @@ class AdvancedLanguageDetector:
         except ImportError:
             self.polyglot_available = False
             self.logger.warning("polyglot library not available")
-    
+
     def detect_language_character_based(self, text: str) -> LanguageDetectionResult:
         """Detect language using character-based patterns."""
         language_scores = {}
         processing_notes = []
-        
+
         # Score based on character patterns
         for language, patterns in self.language_patterns.items():
             score = 0
             for pattern in patterns:
                 matches = len(re.findall(pattern, text))
                 score += matches
-            
+
             if score > 0:
                 language_scores[language] = score / len(text)
-        
+
         # Score based on common words
         words = text.lower().split()
         for language, common_words in self.common_words.items():
             if language not in language_scores:
                 language_scores[language] = 0
-            
+
             word_matches = sum(1 for word in words if word in common_words)
             if word_matches > 0:
                 language_scores[language] += word_matches / len(words)
-        
+
         # Default to English if no patterns match
         if not language_scores:
             language_scores[SupportedLanguage.ENGLISH] = 0.5
             processing_notes.append("Defaulted to English - no patterns matched")
-        
+
         # Sort by score
         sorted_languages = sorted(language_scores.items(), key=lambda x: x[1], reverse=True)
-        
+
         primary_language = sorted_languages[0][0]
         confidence = min(1.0, sorted_languages[0][1] * 2)  # Scale confidence
-        
+
         # Check for mixed language content
         significant_languages = [lang for lang, score in sorted_languages if score > 0.1]
         is_mixed = len(significant_languages) > 1
-        
+
         # Determine script type
         script_type = self._determine_script_type(text)
-        
+
         # Get language family
         language_family = self.language_families.get(primary_language, LanguageFamily.UNKNOWN)
-        
+
         processing_notes.append("Used character-based detection")
-        
+
         return LanguageDetectionResult(
             primary_language=primary_language,
             confidence=confidence,
@@ -285,45 +285,45 @@ class AdvancedLanguageDetector:
             language_family=language_family,
             processing_notes=processing_notes
         )
-    
+
     def detect_language_statistical(self, text: str) -> LanguageDetectionResult:
         """Detect language using statistical methods with external libraries."""
         processing_notes = []
-        
+
         if self.langdetect_available:
             try:
                 import langdetect
                 from langdetect import detect_langs
-                
+
                 # Get language probabilities
                 lang_probs = detect_langs(text)
-                
+
                 # Convert to our format
                 all_languages = []
                 language_distribution = {}
-                
+
                 for lang_prob in lang_probs:
                     lang_code = lang_prob.lang
                     confidence = lang_prob.prob
-                    
+
                     # Map to our supported languages
                     supported_lang = self._map_language_code(lang_code)
                     all_languages.append((supported_lang, confidence))
                     language_distribution[supported_lang.value] = confidence
-                
+
                 primary_language = all_languages[0][0] if all_languages else SupportedLanguage.ENGLISH
                 primary_confidence = all_languages[0][1] if all_languages else 0.5
-                
+
                 # Check for mixed language
                 significant_languages = [lang for lang, conf in all_languages if conf > 0.1]
                 is_mixed = len(significant_languages) > 1
-                
+
                 # Determine script type and language family
                 script_type = self._determine_script_type(text)
                 language_family = self.language_families.get(primary_language, LanguageFamily.UNKNOWN)
-                
+
                 processing_notes.append("Used langdetect statistical detection")
-                
+
                 return LanguageDetectionResult(
                     primary_language=primary_language,
                     confidence=primary_confidence,
@@ -334,16 +334,16 @@ class AdvancedLanguageDetector:
                     language_family=language_family,
                     processing_notes=processing_notes
                 )
-                
+
             except Exception as e:
                 self.logger.warning(f"Statistical language detection failed: {e}")
                 processing_notes.append(f"Statistical detection failed: {e}")
-        
+
         # Fallback to character-based detection
         result = self.detect_language_character_based(text)
         result.processing_notes.extend(processing_notes)
         return result
-    
+
     def _map_language_code(self, lang_code: str) -> SupportedLanguage:
         """Map external library language codes to our supported languages."""
         mapping = {
@@ -375,9 +375,9 @@ class AdvancedLanguageDetector:
             'el': SupportedLanguage.GREEK,
             'he': SupportedLanguage.HEBREW,
         }
-        
+
         return mapping.get(lang_code, SupportedLanguage.UNKNOWN)
-    
+
     def _determine_script_type(self, text: str) -> str:
         """Determine the writing script type of the text."""
         script_patterns = {
@@ -392,32 +392,32 @@ class AdvancedLanguageDetector:
             'devanagari': r'[\u0900-\u097f]',
             'greek': r'[\u0370-\u03ff]',
         }
-        
+
         script_scores = {}
         for script, pattern in script_patterns.items():
             matches = len(re.findall(pattern, text))
             if matches > 0:
                 script_scores[script] = matches / len(text)
-        
+
         if not script_scores:
             return 'unknown'
-        
+
         # Check for mixed scripts
         if len(script_scores) > 1:
             max_score = max(script_scores.values())
             if max_score < 0.7:  # No dominant script
                 return 'mixed'
-        
+
         return max(script_scores.keys(), key=lambda k: script_scores[k])
-    
+
     def detect_language(self, text: str, method: str = "auto") -> LanguageDetectionResult:
         """
         Detect language using specified method.
-        
+
         Args:
             text: Text to analyze
             method: Detection method ('auto', 'statistical', 'character')
-            
+
         Returns:
             Language detection result
         """
@@ -429,11 +429,11 @@ class AdvancedLanguageDetector:
 
 class ChineseTextProcessor:
     """Specialized processor for Chinese text."""
-    
+
     def __init__(self):
         """Initialize Chinese text processor."""
         self.logger = logging.getLogger(__name__)
-        
+
         # Try to import jieba for Chinese segmentation
         try:
             import jieba
@@ -443,13 +443,13 @@ class ChineseTextProcessor:
         except ImportError:
             self.jieba_available = False
             self.logger.warning("jieba not available, using basic Chinese processing")
-        
+
         # Traditional to Simplified Chinese mapping (basic)
         self.trad_to_simp = {
             '繁': '繁', '體': '体', '中': '中', '文': '文',
             '處': '处', '理': '理', '測': '测', '試': '试'
         }
-    
+
     def segment_chinese_text(self, text: str) -> List[str]:
         """Segment Chinese text into words."""
         if self.jieba_available:
@@ -457,37 +457,37 @@ class ChineseTextProcessor:
         else:
             # Basic character-level segmentation
             return list(text)
-    
+
     def convert_traditional_to_simplified(self, text: str) -> str:
         """Convert Traditional Chinese to Simplified Chinese (basic)."""
         result = text
         for trad, simp in self.trad_to_simp.items():
             result = result.replace(trad, simp)
         return result
-    
+
     def process_chinese_text(self, text: str, variant: SupportedLanguage) -> LanguageProcessingResult:
         """Process Chinese text with segmentation and normalization."""
         processed_text = text
         processing_method = "basic"
-        
+
         # Convert Traditional to Simplified if needed
         if variant == SupportedLanguage.CHINESE_TRADITIONAL:
             processed_text = self.convert_traditional_to_simplified(text)
             processing_method += "_trad_to_simp"
-        
+
         # Segment text
         tokens = self.segment_chinese_text(processed_text)
-        
+
         # Basic sentence segmentation (split on Chinese punctuation)
         sentences = re.split(r'[。！？；]', processed_text)
         sentences = [s.strip() for s in sentences if s.strip()]
-        
+
         # Calculate quality score (basic)
         quality_score = min(1.0, len(tokens) / max(1, len(processed_text)) * 10)
-        
+
         if self.jieba_available:
             processing_method += "_jieba"
-        
+
         return LanguageProcessingResult(
             original_text=text,
             processed_text=processed_text,
@@ -508,19 +508,19 @@ class ChineseTextProcessor:
 
 class MultiLanguageProcessor:
     """Comprehensive multi-language text processor."""
-    
+
     def __init__(self):
         """Initialize multi-language processor."""
         self.logger = logging.getLogger(__name__)
         self.language_detector = AdvancedLanguageDetector()
         self.chinese_processor = ChineseTextProcessor()
-        
+
         # Try to initialize spaCy models
         self.spacy_models = {}
         self._init_spacy_models()
-        
+
         self.logger.info("Multi-language processor initialized")
-    
+
     def _init_spacy_models(self):
         """Initialize available spaCy models."""
         model_mappings = {
@@ -533,7 +533,7 @@ class MultiLanguageProcessor:
             SupportedLanguage.PORTUGUESE: 'pt_core_news_sm',
             SupportedLanguage.DUTCH: 'nl_core_news_sm',
         }
-        
+
         try:
             import spacy
             for language, model_name in model_mappings.items():
@@ -544,48 +544,48 @@ class MultiLanguageProcessor:
                     self.logger.warning(f"spaCy model {model_name} not available for {language.value}")
         except ImportError:
             self.logger.warning("spaCy not available")
-    
+
     def process_text_by_language(self, text: str, language: SupportedLanguage) -> LanguageProcessingResult:
         """Process text using language-specific methods."""
         # Special handling for Chinese
         if language in [SupportedLanguage.CHINESE_SIMPLIFIED, SupportedLanguage.CHINESE_TRADITIONAL]:
             return self.chinese_processor.process_chinese_text(text, language)
-        
+
         # Use spaCy if available
         if language in self.spacy_models:
             return self._process_with_spacy(text, language)
-        
+
         # Fallback to basic processing
         return self._process_basic(text, language)
-    
+
     def _process_with_spacy(self, text: str, language: SupportedLanguage) -> LanguageProcessingResult:
         """Process text using spaCy."""
         nlp = self.spacy_models[language]
         doc = nlp(text)
-        
+
         tokens = [token.text for token in doc if not token.is_space]
         sentences = [sent.text.strip() for sent in doc.sents]
-        
+
         # Calculate quality score based on linguistic features
         quality_factors = []
-        
+
         # Token-to-character ratio
         if len(text) > 0:
             quality_factors.append(len(tokens) / len(text))
-        
+
         # Sentence structure
         if len(tokens) > 0:
             avg_sentence_length = len(tokens) / max(1, len(sentences))
             quality_factors.append(min(1.0, avg_sentence_length / 20))  # Normalize to 20 words
-        
+
         # Named entity recognition
         entities = [ent.text for ent in doc.ents]
         if len(tokens) > 0:
             entity_ratio = len(entities) / len(tokens)
             quality_factors.append(min(1.0, entity_ratio * 10))
-        
+
         quality_score = sum(quality_factors) / len(quality_factors) if quality_factors else 0.5
-        
+
         return LanguageProcessingResult(
             original_text=text,
             processed_text=text,
@@ -602,23 +602,23 @@ class MultiLanguageProcessor:
                 'lemmas': [token.lemma_ for token in doc if not token.is_space]
             }
         )
-    
+
     def _process_basic(self, text: str, language: SupportedLanguage) -> LanguageProcessingResult:
         """Basic text processing without external libraries."""
         # Simple tokenization
         tokens = re.findall(r'\b\w+\b', text)
-        
+
         # Simple sentence segmentation
         sentences = re.split(r'[.!?]+', text)
         sentences = [s.strip() for s in sentences if s.strip()]
-        
+
         # Basic quality score
         quality_score = 0.5
         if len(text) > 0:
             # Word density
             word_density = len(tokens) / len(text.split())
             quality_score = min(1.0, word_density)
-        
+
         return LanguageProcessingResult(
             original_text=text,
             processed_text=text,
@@ -631,23 +631,23 @@ class MultiLanguageProcessor:
             quality_score=quality_score,
             metadata={'method': 'regex_based'}
         )
-    
+
     def analyze_text(self, text: str) -> Tuple[LanguageDetectionResult, LanguageProcessingResult]:
         """
         Perform comprehensive language analysis.
-        
+
         Args:
             text: Text to analyze
-            
+
         Returns:
             Tuple of (language_detection_result, processing_result)
         """
         # Detect language
         detection_result = self.language_detector.detect_language(text)
-        
+
         # Process text using detected language
         processing_result = self.process_text_by_language(text, detection_result.primary_language)
-        
+
         return detection_result, processing_result
 
 
@@ -675,10 +675,10 @@ def get_multi_language_processor() -> MultiLanguageProcessor:
 def detect_and_process_text(text: str) -> Tuple[LanguageDetectionResult, LanguageProcessingResult]:
     """
     Convenience function to detect and process text.
-    
+
     Args:
         text: Text to analyze
-        
+
     Returns:
         Tuple of (detection_result, processing_result)
     """

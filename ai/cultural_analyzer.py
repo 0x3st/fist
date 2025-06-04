@@ -16,8 +16,8 @@ from enum import Enum
 from collections import defaultdict, Counter
 import json
 
-from config import Config
-from services.language_detector import SupportedLanguage, LanguageFamily
+from core.config import Config
+from ai.language_detector import SupportedLanguage, LanguageFamily
 
 
 class CulturalRegion(Enum):

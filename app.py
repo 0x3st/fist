@@ -22,22 +22,23 @@ Architecture:
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Callable, Awaitable, Union, Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 import time
 
-from config import Config
-from models import ErrorResponse
-from database import create_tables, load_config_from_database
-from api_routes import router as api_router
-from user_routes import router as user_router
-from admin_routes import router as admin_router
-from monitoring import metrics_collector
+from core.config import Config
+from core.models import ErrorResponse
+from core.database import create_tables, load_config_from_database
+from routes.api_routes import router as api_router
+from routes.user_routes import router as user_router
+from routes.admin_routes import router as admin_router
+from utils.monitoring import metrics_collector
 
 # Lifespan event handler
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(app_instance: FastAPI):  # noqa: ARG001
     """Lifespan event handler for startup and shutdown."""
     # Startup
     try:
@@ -72,12 +73,15 @@ app.add_middleware(
 
 # Performance monitoring middleware
 @app.middleware("http")
-async def performance_monitoring_middleware(request: Request, call_next) -> Response:
+async def performance_monitoring_middleware(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     """Middleware to monitor API performance and collect metrics."""
     start_time = time.time()
 
     # Process request
-    response = await call_next(request)
+    response: Response = await call_next(request)
 
     # Calculate processing time
     process_time = time.time() - start_time
@@ -108,7 +112,9 @@ def markdown_to_html(markdown_text: str) -> str:
             plugins=['strikethrough', 'footnotes', 'table']
         )
 
-        return markdown(markdown_text)
+        result = markdown(markdown_text)
+        # Ensure we return a string
+        return str(result) if not isinstance(result, str) else result
     except ImportError:
         # Fallback to basic conversion if mistune is not available
         import re
@@ -334,7 +340,7 @@ async def read_root():
 
 # Global exception handler
 @app.exception_handler(Exception)
-async def global_exception_handler(_request: Request, exc: Exception):
+async def global_exception_handler(request: Request, exc: Exception):  # noqa: ARG001
     """Global exception handler."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

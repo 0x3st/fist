@@ -18,7 +18,7 @@ from collections import defaultdict, deque
 import threading
 import queue
 
-from config import Config
+from core.config import Config
 
 
 class FeedbackType(Enum):

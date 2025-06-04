@@ -19,7 +19,7 @@ from collections import defaultdict, deque
 import pickle
 import os
 
-from config import Config
+from core.config import Config
 
 
 class ModelType(Enum):

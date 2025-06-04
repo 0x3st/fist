@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from collections import defaultdict, Counter
 
-from config import Config
+from core.config import Config
 
 
 class SupportedLanguage(Enum):
@@ -76,11 +76,11 @@ class MultilingualAnalysisResult:
 
 class MultilingualProcessor:
     """Advanced multilingual content processor."""
-    
+
     def __init__(self):
         """Initialize the multilingual processor."""
         self.logger = logging.getLogger(__name__)
-        
+
         # Language detection patterns
         self.language_patterns = {
             SupportedLanguage.CHINESE_SIMPLIFIED: [
@@ -117,7 +117,7 @@ class MultilingualProcessor:
                 r'[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]',
             ]
         }
-        
+
         # Script detection patterns
         self.script_patterns = {
             ContentScript.CHINESE: r'[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]',
@@ -129,7 +129,7 @@ class MultilingualProcessor:
             ContentScript.THAI: r'[\u0e00-\u0e7f]',
             ContentScript.LATIN: r'[a-zA-Z]',
         }
-        
+
         # Language-specific stopwords (basic sets)
         self.stopwords = {
             SupportedLanguage.ENGLISH: {
@@ -170,7 +170,7 @@ class MultilingualProcessor:
                 'هو', 'هي', 'أن', 'إن', 'كل', 'بعض', 'غير', 'سوف', 'قد', 'لقد', 'منذ', 'حتى'
             }
         }
-        
+
         # Cultural context indicators
         self.cultural_indicators = {
             'chinese_culture': [
@@ -199,12 +199,12 @@ class MultilingualProcessor:
                 r'السعودية|الإمارات|قطر|الكويت|البحرين'
             ]
         }
-        
+
         # Initialize external libraries if available
         self._init_external_libraries()
-        
+
         self.logger.info("Multilingual processor initialized")
-    
+
     def _init_external_libraries(self):
         """Initialize external libraries for enhanced language processing."""
         # Try to import language detection libraries
@@ -215,7 +215,7 @@ class MultilingualProcessor:
         except ImportError:
             self.langdetect_available = False
             self.logger.warning("langdetect library not available")
-        
+
         # Try to import translation libraries
         try:
             from googletrans import Translator
@@ -225,7 +225,7 @@ class MultilingualProcessor:
         except ImportError:
             self.translation_available = False
             self.logger.warning("Google Translate not available")
-        
+
         # Try to import advanced NLP libraries
         try:
             import polyglot
@@ -234,73 +234,73 @@ class MultilingualProcessor:
         except ImportError:
             self.polyglot_available = False
             self.logger.warning("Polyglot library not available")
-    
+
     def detect_script_type(self, text: str) -> ContentScript:
         """
         Detect the writing script type of the text.
-        
+
         Args:
             text: Text to analyze
-            
+
         Returns:
             Detected script type
         """
         script_scores = {}
-        
+
         for script, pattern in self.script_patterns.items():
             matches = len(re.findall(pattern, text))
             if matches > 0:
                 script_scores[script] = matches / len(text)
-        
+
         if not script_scores:
             return ContentScript.UNKNOWN
-        
+
         # Check for mixed scripts
         if len(script_scores) > 1:
             max_score = max(script_scores.values())
             if max_score < 0.7:  # No dominant script
                 return ContentScript.MIXED
-        
+
         return max(script_scores.keys(), key=lambda k: script_scores[k])
-    
+
     def detect_language_basic(self, text: str) -> LanguageDetectionResult:
         """
         Basic language detection using character patterns.
-        
+
         Args:
             text: Text to analyze
-            
+
         Returns:
             Language detection result
         """
         language_scores = {}
-        
+
         # Score based on character patterns
         for language, patterns in self.language_patterns.items():
             score = 0
             for pattern in patterns:
                 matches = len(re.findall(pattern, text))
                 score += matches
-            
+
             if score > 0:
                 language_scores[language] = score / len(text)
-        
+
         # Default to English if no patterns match
         if not language_scores:
             language_scores[SupportedLanguage.ENGLISH] = 1.0
-        
+
         # Sort by score
         sorted_languages = sorted(language_scores.items(), key=lambda x: x[1], reverse=True)
-        
+
         primary_language = sorted_languages[0][0]
         confidence = sorted_languages[0][1]
-        
+
         # Detect script type
         script_type = self.detect_script_type(text)
-        
+
         # Check if multilingual
         is_multilingual = len([score for score in language_scores.values() if score > 0.1]) > 1
-        
+
         return LanguageDetectionResult(
             primary_language=primary_language,
             confidence=min(1.0, confidence * 10),  # Scale confidence
@@ -309,49 +309,49 @@ class MultilingualProcessor:
             is_multilingual=is_multilingual,
             language_distribution={lang.value: score for lang, score in sorted_languages}
         )
-    
+
     def detect_language_advanced(self, text: str) -> LanguageDetectionResult:
         """
         Advanced language detection using external libraries.
-        
+
         Args:
             text: Text to analyze
-            
+
         Returns:
             Language detection result
         """
         if not self.langdetect_available:
             return self.detect_language_basic(text)
-        
+
         try:
             import langdetect
             from langdetect import detect_langs
-            
+
             # Get language probabilities
             lang_probs = detect_langs(text)
-            
+
             # Convert to our format
             all_languages = []
             language_distribution = {}
-            
+
             for lang_prob in lang_probs:
                 lang_code = lang_prob.lang
                 confidence = lang_prob.prob
-                
+
                 # Map to our supported languages
                 supported_lang = self._map_language_code(lang_code)
                 all_languages.append((supported_lang, confidence))
                 language_distribution[supported_lang.value] = confidence
-            
+
             primary_language = all_languages[0][0] if all_languages else SupportedLanguage.ENGLISH
             primary_confidence = all_languages[0][1] if all_languages else 0.5
-            
+
             # Detect script type
             script_type = self.detect_script_type(text)
-            
+
             # Check if multilingual
             is_multilingual = len([conf for _, conf in all_languages if conf > 0.1]) > 1
-            
+
             return LanguageDetectionResult(
                 primary_language=primary_language,
                 confidence=primary_confidence,
@@ -360,11 +360,11 @@ class MultilingualProcessor:
                 is_multilingual=is_multilingual,
                 language_distribution=language_distribution
             )
-            
+
         except Exception as e:
             self.logger.warning(f"Advanced language detection failed: {e}")
             return self.detect_language_basic(text)
-    
+
     def _map_language_code(self, lang_code: str) -> SupportedLanguage:
         """Map language code to supported language."""
         mapping = {
@@ -385,17 +385,17 @@ class MultilingualProcessor:
             'th': SupportedLanguage.THAI,
             'vi': SupportedLanguage.VIETNAMESE,
         }
-        
+
         return mapping.get(lang_code, SupportedLanguage.UNKNOWN)
-    
+
     def detect_cultural_context(self, text: str, language: SupportedLanguage) -> Dict[str, Any]:
         """
         Detect cultural context indicators in the text.
-        
+
         Args:
             text: Text to analyze
             language: Detected language
-            
+
         Returns:
             Cultural context information
         """
@@ -407,9 +407,9 @@ class MultilingualProcessor:
             'religious_content': False,
             'commercial_content': False
         }
-        
+
         text_lower = text.lower()
-        
+
         # Check for cultural indicators
         for culture, patterns in self.cultural_indicators.items():
             for pattern in patterns:
@@ -417,15 +417,15 @@ class MultilingualProcessor:
                 if matches:
                     cultural_context['detected_cultures'].append(culture)
                     cultural_context['cultural_indicators'].extend(matches)
-        
+
         # Remove duplicates
         cultural_context['detected_cultures'] = list(set(cultural_context['detected_cultures']))
         cultural_context['cultural_indicators'] = list(set(cultural_context['cultural_indicators']))
-        
+
         # Calculate confidence
         if cultural_context['cultural_indicators']:
             cultural_context['cultural_confidence'] = min(1.0, len(cultural_context['cultural_indicators']) / 10)
-        
+
         # Detect specific content types
         religious_patterns = [
             r'god|allah|buddha|jesus|christ|prayer|worship|temple|church|mosque|synagogue',
@@ -433,12 +433,12 @@ class MultilingualProcessor:
             r'神|佛|寺|庙|教堂|祈祷|崇拜',
             r'神|仏|寺|神社|教会|祈り|礼拝'
         ]
-        
+
         for pattern in religious_patterns:
             if re.search(pattern, text, re.IGNORECASE):
                 cultural_context['religious_content'] = True
                 break
-        
+
         # Detect commercial content
         commercial_patterns = [
             r'buy|sell|price|discount|sale|shop|store|market|business|company',
@@ -446,83 +446,83 @@ class MultilingualProcessor:
             r'買う|売る|価格|割引|店|市場|会社|企業',
             r'구매|판매|가격|할인|상점|시장|회사|기업'
         ]
-        
+
         for pattern in commercial_patterns:
             if re.search(pattern, text, re.IGNORECASE):
                 cultural_context['commercial_content'] = True
                 break
-        
+
         return cultural_context
-    
+
     def normalize_content(self, text: str, language: SupportedLanguage) -> str:
         """
         Normalize content based on language-specific rules.
-        
+
         Args:
             text: Text to normalize
             language: Detected language
-            
+
         Returns:
             Normalized text
         """
         normalized = text
-        
+
         # Basic normalization
         normalized = re.sub(r'\s+', ' ', normalized)  # Normalize whitespace
         normalized = normalized.strip()
-        
+
         # Language-specific normalization
         if language in [SupportedLanguage.CHINESE_SIMPLIFIED, SupportedLanguage.CHINESE_TRADITIONAL]:
             # Remove extra spaces around Chinese characters
             normalized = re.sub(r'(\u4e00-\u9fff)\s+(\u4e00-\u9fff)', r'\1\2', normalized)
-            
+
         elif language == SupportedLanguage.JAPANESE:
             # Normalize Japanese spacing
             normalized = re.sub(r'(\u3040-\u309f|\u30a0-\u30ff|\u4e00-\u9fff)\s+(\u3040-\u309f|\u30a0-\u30ff|\u4e00-\u9fff)', r'\1\2', normalized)
-            
+
         elif language == SupportedLanguage.KOREAN:
             # Normalize Korean spacing
             normalized = re.sub(r'(\uac00-\ud7af)\s+(\uac00-\ud7af)', r'\1\2', normalized)
-            
+
         elif language == SupportedLanguage.ARABIC:
             # Normalize Arabic text direction and spacing
             normalized = re.sub(r'(\u0600-\u06ff)\s+(\u0600-\u06ff)', r'\1\2', normalized)
-        
+
         return normalized
-    
+
     def translate_content(self, text: str, target_language: str = "en") -> Optional[str]:
         """
         Translate content to target language.
-        
+
         Args:
             text: Text to translate
             target_language: Target language code
-            
+
         Returns:
             Translated text or None if translation fails
         """
         if not self.translation_available:
             return None
-        
+
         try:
             result = self.translator.translate(text, dest=target_language)
             return result.text
         except Exception as e:
             self.logger.warning(f"Translation failed: {e}")
             return None
-    
+
     def process_multilingual_content(self, text: str) -> MultilingualAnalysisResult:
         """
         Perform comprehensive multilingual content analysis.
-        
+
         Args:
             text: Text to analyze
-            
+
         Returns:
             Multilingual analysis result
         """
         processing_notes = []
-        
+
         # Detect language
         if self.langdetect_available:
             language_detection = self.detect_language_advanced(text)
@@ -530,14 +530,14 @@ class MultilingualProcessor:
         else:
             language_detection = self.detect_language_basic(text)
             processing_notes.append("Used basic language detection")
-        
+
         # Normalize content
         normalized_content = self.normalize_content(text, language_detection.primary_language)
         processing_notes.append(f"Normalized for {language_detection.primary_language.value}")
-        
+
         # Detect cultural context
         cultural_context = self.detect_cultural_context(text, language_detection.primary_language)
-        
+
         # Translate if not English
         translated_content = None
         if language_detection.primary_language != SupportedLanguage.ENGLISH:
@@ -546,12 +546,12 @@ class MultilingualProcessor:
                 processing_notes.append("Translated to English")
             else:
                 processing_notes.append("Translation not available")
-        
+
         # Calculate analysis confidence
         analysis_confidence = language_detection.confidence
         if cultural_context['cultural_confidence'] > 0:
             analysis_confidence = (analysis_confidence + cultural_context['cultural_confidence']) / 2
-        
+
         return MultilingualAnalysisResult(
             language_detection=language_detection,
             normalized_content=normalized_content,
@@ -560,27 +560,27 @@ class MultilingualProcessor:
             processing_notes=processing_notes,
             analysis_confidence=analysis_confidence
         )
-    
+
     def get_language_specific_stopwords(self, language: SupportedLanguage) -> Set[str]:
         """Get stopwords for a specific language."""
         return self.stopwords.get(language, set())
-    
+
     def is_content_appropriate_for_culture(self, text: str, target_culture: str) -> Tuple[bool, str]:
         """
         Check if content is appropriate for a specific cultural context.
-        
+
         Args:
             text: Text to check
             target_culture: Target cultural context
-            
+
         Returns:
             Tuple of (is_appropriate, reason)
         """
         # This is a simplified implementation
         # In practice, this would involve complex cultural sensitivity analysis
-        
+
         cultural_context = self.detect_cultural_context(text, SupportedLanguage.ENGLISH)
-        
+
         # Basic checks for cultural sensitivity
         sensitive_patterns = {
             'chinese_culture': [
@@ -595,12 +595,12 @@ class MultilingualProcessor:
                 r'extreme political views|hate speech|discrimination'
             ]
         }
-        
+
         if target_culture in sensitive_patterns:
             for pattern in sensitive_patterns[target_culture]:
                 if re.search(pattern, text, re.IGNORECASE):
                     return False, f"Content may be sensitive for {target_culture}"
-        
+
         return True, "Content appears appropriate"
 
 
@@ -619,10 +619,10 @@ def get_multilingual_processor() -> MultilingualProcessor:
 def process_multilingual_content(text: str) -> MultilingualAnalysisResult:
     """
     Convenience function to process multilingual content.
-    
+
     Args:
         text: Text to process
-        
+
     Returns:
         Multilingual analysis result
     """

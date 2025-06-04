@@ -10,18 +10,18 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Depends, status, Header
 from sqlalchemy.orm import Session
 
-from models import (
+from core.models import (
     AdminLoginRequest, AdminLoginResponse, AdminUserListResponse,
     InvitationCodeCreateRequest, InvitationCodeResponse,
     UserLimitUpdateRequest, AIConfigUpdateRequest, AdminPasswordUpdateRequest,
     UserResponse
 )
-from database import get_db, DatabaseOperations
-from auth import (
+from core.database import get_db, DatabaseOperations
+from core.auth import (
     verify_admin_credentials, create_admin_access_token, require_admin_auth,
     get_password_hash, verify_password
 )
-from config import Config
+from core.config import Config
 
 # Create admin router
 router = APIRouter(prefix="/api/admin", tags=["Admin Management"])
