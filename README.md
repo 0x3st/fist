@@ -59,8 +59,10 @@ cd fist
 
 **方式二：手动启动**
 ```bash
-# 启动所有服务
+# 启动所有服务（使用 docker-compose 或 docker compose）
 docker-compose up -d
+# 或者
+docker compose up -d
 
 # 查看服务状态
 docker-compose ps

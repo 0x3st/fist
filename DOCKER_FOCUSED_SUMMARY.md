@@ -30,8 +30,9 @@
 - ✅ 保持了完整的Docker镜像构建配置
 
 #### pyproject.toml
-- ✅ 更新了packages配置，删除了`client_libraries`引用
-- ✅ 添加了`utils`包
+- ✅ 更新了packages配置，删除了`client_libraries`和`api`引用
+- ✅ 修复了包结构错误，确保所有引用的包都存在
+- ✅ 最终包列表：`["ai", "core", "routes", "utils"]`
 
 #### DEPLOYMENT.md
 - ✅ 重新编写为专注于Docker部署的文档
@@ -58,8 +59,15 @@
 - ✅ 包含环境检查、服务启动、状态验证
 - ✅ 提供友好的用户交互和错误处理
 - ✅ 设置了可执行权限
+- ✅ 兼容新旧版本的Docker Compose命令（`docker-compose` 和 `docker compose`）
+- ✅ 自动检测并使用可用的Docker Compose命令
 
-### 4. 清理操作
+### 4. 问题修复
+- ✅ 修复了pyproject.toml中引用不存在的`api`包的错误
+- ✅ 解决了"package directory 'api' does not exist"的构建错误
+- ✅ 确保所有包引用都指向实际存在的目录
+
+### 5. 清理操作
 - ✅ 删除了所有`__pycache__`目录
 - ✅ 清理了临时文件和缓存
 

@@ -48,4 +48,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["ai", "api", "core", "routes", "utils"]
+packages = ["ai", "core", "routes", "utils"]
