@@ -22,7 +22,7 @@ Architecture:
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Callable, Awaitable, Union, Any
+from typing import Callable, Awaitable
 from fastapi import FastAPI, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
