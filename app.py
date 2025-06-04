@@ -382,7 +382,7 @@ async def global_exception_handler(request: Request, exc: Exception):  # noqa: A
             error="Internal server error",
             detail=str(exc),
             timestamp=datetime.now()
-        ).model_dump()
+        ).dict()
     )
 
 
