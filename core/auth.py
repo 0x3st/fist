@@ -55,7 +55,7 @@ def verify_token(token: str) -> Optional[str]:
 
 def verify_admin_credentials(db: Session, username: str, password: str) -> bool:
     """Verify admin credentials against database."""
-    from database import DatabaseOperations
+    from core.database import DatabaseOperations
 
     admin = DatabaseOperations.get_admin_by_username(db, username)
     if not admin:
@@ -100,7 +100,7 @@ def hash_token(token: str) -> str:
 
 def verify_api_token(db: Session, token: str) -> Optional[str]:
     """Verify an API token and return the user_id if valid."""
-    from database import DatabaseOperations
+    from core.database import DatabaseOperations
 
     if not token.startswith(Config.API_TOKEN_PREFIX):
         return None
@@ -219,7 +219,7 @@ def require_admin_auth(
         )
 
     # Verify admin still exists and is active
-    from database import DatabaseOperations
+    from core.database import DatabaseOperations
     admin = DatabaseOperations.get_admin_by_id(db, admin_id)
     if not admin or not bool(admin.is_active):
         raise HTTPException(

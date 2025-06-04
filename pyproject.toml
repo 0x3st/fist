@@ -1,52 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "fist"
 version = "2.0.0"
 description = "a fast, intuitive and sensitive test"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "openai",
     "fastapi",
     "uvicorn",
     "sqlalchemy",
-    "psycopg2-binary", # PostgreSQL adapter
+    "psycopg2-binary",
     "requests",
     "python-jose[cryptography]",
     "passlib[bcrypt]",
-    "bcrypt==4.0.1", # Pin bcrypt to 4.0.1 for compatibility with passlib 1.7.4
-    "python-multipart", # Required for FastAPI
-    "jinja2", # Required for FastAPI
-    "mistune", # Markdown to HTML converter
-    "redis", # Redis for caching
-    "celery", # Background task processing
-    "prometheus-client", # Metrics collection
-    "psutil", # System monitoring
-    # Phase 1: Enhanced Text Analysis
-    "transformers", # Transformer models for advanced NLP
-    "torch", # PyTorch for transformer models
-    "spacy", # Advanced NLP processing
-    "textblob", # Simple sentiment analysis
-    "vadersentiment", # Social media sentiment analysis
-    "scikit-learn", # Machine learning utilities
-    "nltk", # Natural Language Toolkit
-    # Phase 2: Content Processing
-    "jieba", # Chinese text segmentation
-    "langdetect", # Language detection
-    # Phase 3: Multi-format Support
-    "beautifulsoup4", # HTML parsing
-    "lxml", # XML processing
-    "python-docx", # Word document processing
-    "python-pptx", # PowerPoint processing
-    "PyPDF2", # PDF processing
-    "pytesseract", # OCR
-    "Pillow", # Image processing
-    "opencv-python", # Computer vision
-    # Phase 5: Semantic Caching
-    "sentence-transformers", # Sentence embeddings
-    "faiss-cpu", # Vector similarity search
-    "qdrant-client", # Vector database client
-    "en-core-web-sm",
+    "bcrypt==4.0.1",
+    "python-multipart",
+    "jinja2",
+    "mistune",
+    "redis",
+    "celery",
+    "prometheus-client",
+    "psutil",
+    "transformers",
+    "torch",
+    "spacy",
+    "textblob",
+    "vadersentiment",
+    "scikit-learn",
+    "nltk",
+    "jieba",
+    "langdetect",
+    "beautifulsoup4",
+    "lxml",
+    "python-docx",
+    "python-pptx",
+    "PyPDF2",
+    "pytesseract",
+    "Pillow",
+    "opencv-python",
+    "sentence-transformers",
+    "faiss-cpu",
+    "qdrant-client",
 ]
 
-[tool.uv.sources]
-en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }
+[tool.setuptools]
+packages = ["ai", "api", "core", "routes", "client_libraries"]

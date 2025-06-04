@@ -1,9 +1,10 @@
-# FIST Content Moderation API - Production Dockerfile
+# FIST Content Moderation API - Fixed pyproject.toml Dockerfile
 FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
 
 # Set work directory
 WORKDIR /app
@@ -16,15 +17,17 @@ RUN apt-get update \
         git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for faster package management
-RUN pip install uv
-
 # Copy project files
-COPY pyproject.toml uv.lock ./
 COPY . .
 
-# Install Python dependencies
-RUN uv pip install --system -e .
+# Replace pyproject.toml with fixed version
+RUN mv pyproject.toml.fixed pyproject.toml
+
+# Install dependencies
+RUN pip install --no-cache-dir -e .
+
+# Install spaCy model
+RUN python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash fist
@@ -39,4 +42,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/ || exit 1
 
 # Run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
