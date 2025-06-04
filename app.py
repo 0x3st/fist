@@ -332,10 +332,44 @@ def read_readme() -> str:
 </html>"""
 
 
+@app.get("/health")
+async def health_check():
+    """Simple health check endpoint."""
+    try:
+        # Test database connection
+        from core.database import SessionLocal
+        from sqlalchemy import text
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_status = "ok"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+
+    return {
+        "status": "ok",
+        "database": db_status,
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     """Display README content at root path."""
-    return read_readme()
+    try:
+        return read_readme()
+    except Exception as e:
+        return f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>FIST API - Error</title>
+</head>
+<body>
+    <h1>FIST Content Moderation API</h1>
+    <p>Error loading homepage: {str(e)}</p>
+    <p><a href="/health">Health Check</a></p>
+    <p><a href="/docs">API Documentation</a></p>
+</body>
+</html>"""
 
 
 # Global exception handler
