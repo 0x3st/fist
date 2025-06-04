@@ -70,18 +70,26 @@ def get_db():
 
 def initialize_admin_user():
     """Initialize default admin user if none exists."""
-    import hashlib
+    from core.auth import get_password_hash
 
     db = SessionLocal()
     try:
         # Check if any admin exists
         if not DatabaseOperations.admin_exists(db):
-            # Create default admin user
-            password_hash = hashlib.sha256(Config.ADMIN_PASSWORD.encode()).hexdigest()
+            # Create default admin user with proper bcrypt hashing
+            password_hash = get_password_hash(Config.ADMIN_PASSWORD)
             DatabaseOperations.create_admin(db, Config.ADMIN_USERNAME, password_hash)
             print(f"Created default admin user: {Config.ADMIN_USERNAME}")
         else:
-            print("Admin user already exists")
+            # Check if existing admin has old SHA256 hash and update it
+            admin = DatabaseOperations.get_admin_by_username(db, Config.ADMIN_USERNAME)
+            if admin and len(str(admin.password_hash)) == 64:  # SHA256 hash length
+                print("Updating admin password hash from SHA256 to bcrypt...")
+                password_hash = get_password_hash(Config.ADMIN_PASSWORD)
+                DatabaseOperations.update_admin_password(db, Config.ADMIN_USERNAME, password_hash)
+                print("Admin password hash updated successfully")
+            else:
+                print("Admin user already exists with proper hash")
     except Exception as e:
         print(f"Error initializing admin user: {e}")
     finally:

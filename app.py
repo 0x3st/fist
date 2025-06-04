@@ -20,7 +20,6 @@ Architecture:
 - Vercel deployment ready with PostgreSQL support
 """
 import os
-import json
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Callable, Awaitable
